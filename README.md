@@ -57,6 +57,9 @@ go build -o interview-parser ./cmd
 # Use different AI models
 ./interview-parser --input interview.mp4 --gpt_transcribe_model whisper-1 --gpt_classify_questions_model gpt-4
 
+# Specify language for analysis (ru or en)
+./interview-parser --input interview.mp4 --language en
+
 # Load previously created chunks instead of creating new ones
 ./interview-parser --load_chunks --chunks_dir ./output/chunks
 
@@ -82,6 +85,7 @@ export OPENAI_API_KEY=your_api_key_here
 | `--chunk_seconds` | Duration in seconds for each audio chunk during processing | `100` |
 | `--gpt_transcribe_model` | OpenAI model to use for audio transcription | `gpt-4o-transcribe` |
 | `--gpt_classify_questions_model` | OpenAI model to use for question analysis | `o3` |
+| `--language` | Language to use for analysis results (ru or en) | `ru` |
 | `--load_chunks` | Load previously created chunks instead of creating new ones | `false` |
 | `--chunks_dir` | Directory to store/load audio chunks | `~/.interview_parser/output/chunks` |
 | `--parallel_workers` | Number of parallel workers for processing | Number of CPU cores |
@@ -123,13 +127,28 @@ The analysis file contains:
 
 ## Question Classification Rules
 
-The system follows specific rules to ensure accurate analysis:
+The system follows specific rules to ensure accurate analysis and supports multiple languages:
+
+### Language Support
+The tool supports two languages for analysis:
+- **Russian (ru)**: Default language, uses Russian prompts and analysis
+- **English (en)**: Uses English prompts and analysis for English-language interviews
 
 ### Questions That Are Ignored
+
+**Russian interviews:**
 - Sound checks ("Слышно?", "Нормально слышно?")
 - Organizational questions ("Все понятно?", "Продолжаем?")
 - Knowledge checks ("Ты это знал?")
 - "Do you have questions?" type questions
+- Rhetorical or emotional questions
+- Clarifications without new meaning
+
+**English interviews:**
+- Sound checks ("Do you hear me?", "Is the sound okay?")
+- Organizational questions ("Is everything clear?", "Shall we continue?")
+- Knowledge-check questions ("Did you know this?")
+- "Do you have any questions?" type questions
 - Rhetorical or emotional questions
 - Clarifications without new meaning
 

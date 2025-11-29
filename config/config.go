@@ -23,6 +23,7 @@ type Config struct {
 	TranscriptPath            string `mapstructure:"-"`
 	ParallelWorkers           int    `mapstructure:"parallel_workers"`
 	OpenAIAPIKey              string `mapstructure:"openai_api_key"`
+	Language                  string `mapstructure:"language"`
 }
 
 const (
@@ -74,6 +75,9 @@ func ParseConfig() *Config {
 		fmt.Println("  # Use different AI models")
 		fmt.Println("  interview-parser --input interview.mov --gpt_transcribe_model whisper-1 --gpt_classify_questions_model gpt-4")
 		fmt.Println("")
+		fmt.Println("  # Specify language for analysis (ru or en)")
+		fmt.Println("  interview-parser --input interview.mov --language en")
+		fmt.Println("")
 		fmt.Println("FLAGS:")
 		pflag.PrintDefaults()
 		fmt.Println("")
@@ -100,6 +104,7 @@ func ParseConfig() *Config {
 	pflag.Bool("load_chunks", defaultLoadChunks, "Load previously created chunks instead of creating new ones")
 	pflag.Int("parallel_workers", runtime.NumCPU(), "Number of parallel workers for processing")
 	pflag.String("openai_api_key", "", "OpenAI API key (can also be set via OPENAI_API_KEY environment variable)")
+	pflag.String("language", "ru", "Language to use for analysis results")
 
 	pflag.Parse()
 
