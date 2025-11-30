@@ -72,7 +72,7 @@ var (
     {
       "question": "string",
       "answer": "краткое содержание ответа кандидата",
-      "full_answer": "полный текст ответа кандидата (обрезать до 300 символов)",
+      "full_answer": "полный текст ответа кандидата.",
       "accuracy": 0.0,
       "questioner": "interviewer",
       "answerer": "candidate"
@@ -167,7 +167,7 @@ OUTPUT FORMAT — strictly ONLY valid JSON according to the structure at the end
     {
       "question": "string",
       "answer": "short summary of the candidate's answer",
-      "full_answer": "full text of the candidate's answer (trim to 300 characters)",
+      "full_answer": "full text of the candidate's answer",
       "accuracy": 0.0,
       "questioner": "interviewer",
       "answerer": "candidate"
