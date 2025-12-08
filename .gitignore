@@ -3,3 +3,6 @@
 output/
 interview_parser
 .idea
+build/bin
+node_modules
+frontend/dist

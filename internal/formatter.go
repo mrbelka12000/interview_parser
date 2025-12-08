@@ -1,4 +1,4 @@
-package interview_parser
+package internal
 
 import (
 	"strings"

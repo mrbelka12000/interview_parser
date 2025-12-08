@@ -4,7 +4,7 @@ import (
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 
-	"github.com/mrbelka12000/interview_parser/config"
+	"github.com/mrbelka12000/interview_parser/internal/config"
 )
 
 type Client struct {

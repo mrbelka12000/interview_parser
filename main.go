@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"embed"
 	"errors"
 	"fmt"
 	"log"
@@ -11,10 +12,18 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/mrbelka12000/interview_parser"
-	"github.com/mrbelka12000/interview_parser/client"
-	"github.com/mrbelka12000/interview_parser/config"
+	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+
+	"github.com/mrbelka12000/interview_parser/internal"
+	"github.com/mrbelka12000/interview_parser/internal/app"
+	"github.com/mrbelka12000/interview_parser/internal/client"
+	"github.com/mrbelka12000/interview_parser/internal/config"
 )
+
+//go:embed all:frontend/dist
+var assets embed.FS
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -37,9 +46,9 @@ func main() {
 
 	if cfg.OpenAIAPIKey == "" {
 		log.Println("OpenAI API key is empty, getting from DB...")
-		apiKey, err := interview_parser.GetOpenAIAPIKeyFromDB(cfg)
+		apiKey, err := internal.GetOpenAIAPIKeyFromDB(cfg)
 		if err != nil {
-			if errors.Is(err, interview_parser.ErrNoKey) {
+			if errors.Is(err, internal.ErrNoKey) {
 				log.Fatal("No OPENAI API key found in DB")
 			}
 			fmt.Println(err)
@@ -49,9 +58,9 @@ func main() {
 		log.Println("OpenAI API key found, using it...")
 		cfg.OpenAIAPIKey = apiKey
 	} else {
-		apiKey, err := interview_parser.GetOpenAIAPIKeyFromDB(cfg)
+		apiKey, err := internal.GetOpenAIAPIKeyFromDB(cfg)
 		if err != nil {
-			if !errors.Is(err, interview_parser.ErrNoKey) {
+			if !errors.Is(err, internal.ErrNoKey) {
 				fmt.Println(err)
 				os.Exit(1)
 			}
@@ -62,13 +71,32 @@ func main() {
 			goto skipInsert
 		}
 
-		err = interview_parser.InsertOpenAIAPIKey(cfg)
+		err = internal.InsertOpenAIAPIKey(cfg)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 	}
 skipInsert:
+
+	ap := app.NewApp()
+	// Create application with options
+	err := wails.Run(&options.App{
+		Title:  "interview_parser_app",
+		Width:  1024,
+		Height: 768,
+		AssetServer: &assetserver.Options{
+			Assets: assets,
+		},
+		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
+		OnStartup:        ap.Startup,
+		Bind: []interface{}{
+			ap,
+		},
+	})
+	if err != nil {
+		println("Error:", err.Error())
+	}
 
 	openAIClient := client.New(cfg)
 	if err := openAIClient.IsValidAPIKeysProvided(); err != nil {
@@ -78,12 +106,12 @@ skipInsert:
 
 	var (
 		chunks []string
-		err    error
 	)
+
 	if !cfg.LoadChunks {
-		chunks, err = interview_parser.SplitIntoChunks(cfg)
+		chunks, err = internal.SplitIntoChunks(cfg)
 	} else {
-		chunks, err = interview_parser.LoadChunks(cfg)
+		chunks, err = internal.LoadChunks(cfg)
 	}
 	if err != nil {
 		fmt.Println(err)
@@ -126,9 +154,9 @@ skipInsert:
 	}
 
 	transcript := strings.Join(collectedText, "")
-	transcript = interview_parser.FormatText(transcript)
+	transcript = internal.FormatText(transcript)
 
-	if err = interview_parser.SaveTranscript(cfg.TranscriptPath, transcript); err != nil {
+	if err = internal.SaveTranscript(cfg.TranscriptPath, transcript); err != nil {
 		fmt.Printf("[i] Failed to save transcript: %s\n", err)
 	}
 
@@ -138,7 +166,7 @@ skipInsert:
 		return
 	}
 
-	if err = interview_parser.SaveAnalyzeResponse(cfg.OutputPath, analyzeResp); err != nil {
+	if err = internal.SaveAnalyzeResponse(cfg.OutputPath, analyzeResp); err != nil {
 		fmt.Println(err)
 		return
 	}

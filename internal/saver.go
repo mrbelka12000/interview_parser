@@ -1,10 +1,10 @@
-package interview_parser
+package internal
 
 import (
 	"fmt"
 	"os"
 
-	"github.com/mrbelka12000/interview_parser/client"
+	"github.com/mrbelka12000/interview_parser/internal/client"
 )
 
 func SaveTranscript(outputFile, transcript string) error {

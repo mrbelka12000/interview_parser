@@ -1,4 +1,4 @@
-package interview_parser
+package internal
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mrbelka12000/interview_parser/config"
+	"github.com/mrbelka12000/interview_parser/internal/config"
 )
 
 // getDuration returns media duration in seconds using ffprobe.

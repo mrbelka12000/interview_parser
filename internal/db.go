@@ -1,4 +1,4 @@
-package interview_parser
+package internal
 
 import (
 	"database/sql"
@@ -7,7 +7,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 
-	"github.com/mrbelka12000/interview_parser/config"
+	"github.com/mrbelka12000/interview_parser/internal/config"
 )
 
 var (
