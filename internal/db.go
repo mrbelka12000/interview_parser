@@ -50,6 +50,21 @@ VALUES (?);`, cfg.OpenAIAPIKey)
 	return nil
 }
 
+func DeleteOpenAIAPIKey(cfg *config.Config) error {
+	db, err := connectToDB(cfg)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	_, err = db.Exec(`DELETE FROM api_keys;`)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func connectToDB(cfg *config.Config) (*sql.DB, error) {
 	db, err := sql.Open("sqlite3", cfg.DBPath)
 	if err != nil {

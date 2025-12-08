@@ -2,6 +2,8 @@
 import FileExplorer from './components/FileExplorer.vue'
 import HelloWorld from './components/HelloWorld.vue'
 import FileContent from './components/FileContent.vue'
+import FileUpload from './components/FileUpload.vue'
+import ApiKeyManager from './components/ApiKeyManager.vue'
 import { ref } from 'vue'
 
 const currentView = ref('explorer')
@@ -35,6 +37,20 @@ const backToFileExplorer = () => {
           📂 File Explorer
         </button>
         <button 
+          @click="switchView('upload')" 
+          :class="{ active: currentView === 'upload' }"
+          class="nav-tab"
+        >
+          🎤 Upload & Transcribe
+        </button>
+        <button 
+          @click="switchView('apikey')" 
+          :class="{ active: currentView === 'apikey' }"
+          class="nav-tab"
+        >
+          🔑 API Key
+        </button>
+        <button 
           @click="switchView('greet')" 
           :class="{ active: currentView === 'greet' }"
           class="nav-tab"
@@ -57,6 +73,12 @@ const backToFileExplorer = () => {
       <FileExplorer 
         v-if="currentView === 'explorer'" 
         @file-selected="showFileContent" 
+      />
+      <FileUpload 
+        v-else-if="currentView === 'upload'" 
+      />
+      <ApiKeyManager 
+        v-else-if="currentView === 'apikey'" 
       />
       <FileContent 
         v-else-if="currentView === 'fileContent'" 

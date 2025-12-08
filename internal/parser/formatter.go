@@ -5,7 +5,6 @@ import (
 )
 
 func (p *Parser) FormatText(text string) string {
-
 	var (
 		lastDot, l int
 		newText    strings.Builder

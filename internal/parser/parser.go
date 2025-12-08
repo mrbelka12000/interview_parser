@@ -1,20 +1,17 @@
 package parser
 
 import (
-	"github.com/mrbelka12000/interview_parser/internal/client"
 	"github.com/mrbelka12000/interview_parser/internal/config"
 )
 
 type (
 	Parser struct {
-		cfg      *config.Config
-		aiClient *client.Client
+		Cfg *config.Config
 	}
 )
 
-func NewParser(cfg *config.Config, aiClient *client.Client) *Parser {
+func NewParser(cfg *config.Config) *Parser {
 	return &Parser{
-		cfg:      cfg,
-		aiClient: aiClient,
+		Cfg: cfg,
 	}
 }

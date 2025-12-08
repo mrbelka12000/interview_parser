@@ -2,11 +2,17 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
+	"github.com/wailsapp/wails/v2/pkg/runtime"
+
+	"github.com/mrbelka12000/interview_parser/internal"
 	"github.com/mrbelka12000/interview_parser/internal/client"
 	"github.com/mrbelka12000/interview_parser/internal/config"
 	"github.com/mrbelka12000/interview_parser/internal/parser"
@@ -23,16 +29,18 @@ type FileInfo struct {
 
 // App struct
 type App struct {
-	ctx    context.Context
-	cfg    *config.Config
-	parser *parser.Parser
+	ctx      context.Context
+	cfg      *config.Config
+	aiClient *client.Client
+	parser   *parser.Parser
 }
 
 // NewApp creates a new App application struct
 func NewApp(cfg *config.Config) *App {
 	return &App{
-		cfg:    cfg,
-		parser: parser.NewParser(cfg, client.New(cfg)),
+		cfg:      cfg,
+		parser:   parser.NewParser(cfg),
+		aiClient: client.New(cfg),
 	}
 }
 
@@ -84,6 +92,187 @@ func (a *App) GetFiles() ([]FileInfo, error) {
 	}
 
 	return files, nil
+}
+
+// TranscriptionResult represents the result of transcription and analysis
+type TranscriptionResult struct {
+	Success        bool   `json:"success"`
+	Message        string `json:"message"`
+	TranscriptPath string `json:"transcriptPath,omitempty"`
+	AnalysisPath   string `json:"analysisPath,omitempty"`
+}
+
+// ProcessFileForTranscription handles file upload and processing using the parser logic
+func (a *App) ProcessFileForTranscription(filePath string, loadChunks bool) (*TranscriptionResult, error) {
+	fmt.Printf("Processing file %s\n", filePath)
+	// Check if file exists
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return &TranscriptionResult{
+			Success: false,
+			Message: fmt.Sprintf("file does not exist: %s", filePath),
+		}, nil
+	}
+
+	apiKey, err := internal.GetOpenAIAPIKeyFromDB(a.cfg)
+	if err != nil || apiKey == "" {
+		return &TranscriptionResult{
+			Success: false,
+			Message: "No API Key provided",
+		}, nil
+	}
+
+	// Create a copy of config with updated paths for this specific file
+	cfg := *a.cfg
+	cfg.LoadChunks = loadChunks
+	cfg.OpenAIAPIKey = apiKey
+
+	dir, err := os.ReadDir(cfg.DefaultDir)
+	if err != nil {
+		return &TranscriptionResult{
+			Success: false,
+			Message: fmt.Sprintf("failed to read working dir: %s", err),
+		}, nil
+	}
+
+	// Generate unique output paths for this transcription
+	baseName := strings.TrimSuffix(filepath.Base(filePath), filepath.Ext(filePath))
+	cfg.TranscriptPath = filepath.Join(cfg.DefaultDir, fmt.Sprintf("%s_transcript_%v.txt", baseName, len(dir)))
+	outputPath := filepath.Join(cfg.DefaultDir, fmt.Sprintf("%s_analysis_%v.md", baseName, len(dir)))
+
+	// Send initial progress
+	a.sendProgress(5, "Loading file...", "Reading audio/video file...")
+
+	// Step 1: Split into chunks or load existing chunks
+	var chunks []string
+	if cfg.LoadChunks {
+		a.sendProgress(15, "Loading chunks...", "Loading existing chunk files...")
+		chunks, err = a.parser.LoadChunks(&cfg)
+		if err != nil {
+			return &TranscriptionResult{
+				Success: false,
+				Message: fmt.Sprintf("failed to load chunks: %s", err),
+			}, nil
+		}
+	} else {
+		a.sendProgress(15, "Splitting into chunks...", "Dividing file into manageable segments...")
+		chunks, err = a.parser.SplitIntoChunks(&cfg, filePath)
+		if err != nil {
+			return &TranscriptionResult{
+				Success: false,
+				Message: fmt.Sprintf("failed to split into chunks: %s", err),
+			}, nil
+		}
+	}
+
+	if len(chunks) == 0 {
+		return &TranscriptionResult{
+			Success: false,
+			Message: "no chunks to process",
+		}, nil
+	}
+
+	// Step 2: Transcribe chunks using the provided parser logic
+	a.sendProgress(25, "Transcribing audio...", "Converting speech to text using AI...")
+	
+	var (
+		wg            sync.WaitGroup
+		mx            sync.Mutex
+		workers       = make(chan struct{}, cfg.ParallelWorkers)
+		collectedText = make([]string, len(chunks))
+		completed     = 0
+	)
+
+	for i, chunk := range chunks {
+		wg.Add(1)
+		workers <- struct{}{}
+		go func(ind int) {
+			defer func() {
+				<-workers
+				wg.Done()
+			}()
+
+			textFromChunk, err := a.aiClient.Transcribe(a.ctx, chunk)
+			if err != nil {
+				log.Printf("Error transcribing chunk %d: %v", ind, err)
+				return
+			}
+
+			mx.Lock()
+			collectedText[ind] = textFromChunk
+			completed++
+			// Update progress based on completed chunks
+			progress := 25 + int(float64(completed)/float64(len(chunks))*35) // 25% to 60%
+			a.sendProgress(progress, "Processing chunks...", fmt.Sprintf("Processed %d/%d audio segments...", completed, len(chunks)))
+			mx.Unlock()
+		}(i)
+	}
+
+	wg.Wait()
+	close(workers)
+
+	if errors.Is(a.ctx.Err(), context.Canceled) {
+		log.Println("[i] cancelled by signal, skip analyze")
+		return &TranscriptionResult{
+			Success: false,
+			Message: "processing was cancelled",
+		}, nil
+	}
+
+	// Step 3: Join and format transcript
+	a.sendProgress(65, "Formatting transcript...", "Organizing and formatting text...")
+	transcript := strings.Join(collectedText, "")
+	transcript = a.parser.FormatText(transcript)
+
+	// Step 4: Save transcript
+	a.sendProgress(75, "Saving transcript...", "Writing transcript file...")
+	if err = a.parser.SaveTranscript(cfg.TranscriptPath, transcript); err != nil {
+		return &TranscriptionResult{
+			Success: false,
+			Message: fmt.Sprintf("failed to save transcript: %s", err),
+		}, nil
+	}
+
+	// Step 5: Analyze transcript
+	a.sendProgress(85, "Analyzing content...", "Extracting questions and analyzing interview...")
+	analyzeResp, err := a.aiClient.AnalyzeTranscript(a.ctx, transcript)
+	if err != nil {
+		return &TranscriptionResult{
+			Success: false,
+			Message: fmt.Sprintf("failed to analyze transcript: %s", err),
+		}, nil
+	}
+
+	// Step 6: Save analysis response
+	a.sendProgress(95, "Saving analysis...", "Writing analysis file...")
+	if err = a.parser.SaveAnalyzeResponse(outputPath, analyzeResp); err != nil {
+		return &TranscriptionResult{
+			Success: false,
+			Message: fmt.Sprintf("failed to save analysis: %s", err),
+		}, nil
+	}
+
+	// Final progress
+	a.sendProgress(100, "Complete!", "Processing finished successfully!")
+
+	return &TranscriptionResult{
+		Success:        true,
+		Message:        "File processed successfully",
+		TranscriptPath: cfg.TranscriptPath,
+		AnalysisPath:   outputPath,
+	}, nil
+}
+
+// sendProgress sends progress update to frontend
+func (a *App) sendProgress(percentage int, stage, details string) {
+	report := ProgressReport{
+		Percentage: percentage,
+		Stage:      stage,
+		Details:    details,
+		IsComplete: percentage >= 100,
+	}
+	
+	// Send event to frontend
+	runtime.EventsEmit(a.ctx, "progress", report)
 }
 
 // ProcessFile handles file click actions
@@ -209,4 +398,127 @@ func (a *App) GetFilesInDirectory(dirPath string) ([]FileInfo, error) {
 	}
 
 	return files, nil
+}
+
+// PickFile opens native file dialog and returns full path
+func (a *App) PickFile() (string, error) {
+	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Pick media file",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "Media files",
+				Pattern:     "*.mp3;*.wav;*.m4a;*.mp4;*.mov;*.avi",
+			},
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	return path, nil
+}
+
+// APIKeyResult represents the result of API key operations
+type APIKeyResult struct {
+	Success     bool   `json:"success"`
+	Message     string `json:"message,omitempty"`
+	APIKey      string `json:"apiKey,omitempty"`
+	LastUpdated  string `json:"lastUpdated,omitempty"`
+}
+
+// ProgressReport represents progress update during processing
+type ProgressReport struct {
+	Percentage int    `json:"percentage"`
+	Stage      string `json:"stage"`
+	Details    string `json:"details"`
+	IsComplete bool   `json:"isComplete"`
+}
+
+// GetOpenAIAPIKey retrieves the current OpenAI API key from database
+func (a *App) GetOpenAIAPIKey() (*APIKeyResult, error) {
+	apiKey, err := internal.GetOpenAIAPIKeyFromDB(a.cfg)
+	if err != nil {
+		if errors.Is(err, internal.ErrNoKey) {
+			return &APIKeyResult{
+				Success: false,
+				Message: "No API key found in database",
+			}, nil
+		}
+		return &APIKeyResult{
+			Success: false,
+			Message: fmt.Sprintf("Failed to retrieve API key: %s", err),
+		}, nil
+	}
+
+	return &APIKeyResult{
+		Success:     true,
+		APIKey:      apiKey,
+		LastUpdated: "Recently updated",
+	}, nil
+}
+
+// SaveOpenAIAPIKey saves a new OpenAI API key to database
+func (a *App) SaveOpenAIAPIKey(apiKey string) (*APIKeyResult, error) {
+	if apiKey == "" {
+		return &APIKeyResult{
+			Message: "API key cannot be empty",
+		}, nil
+	}
+
+	// Basic validation for OpenAI API key
+	if !strings.HasPrefix(apiKey, "sk-") {
+		return &APIKeyResult{
+			Message: "Invalid API key format. OpenAI API keys should start with 'sk-'",
+		}, nil
+	}
+
+	fmt.Printf("Saving API key: %s\n", apiKey)
+	// Save to config for current session
+	tmpCfg := *a.cfg
+	tmpCfg.OpenAIAPIKey = apiKey
+
+	aiClient := client.New(&tmpCfg)
+	err := aiClient.IsValidAPIKeysProvided()
+	if err != nil {
+		return &APIKeyResult{
+			Message: err.Error(),
+		}, nil
+	}
+
+	// Save to database
+	err = internal.InsertOpenAIAPIKey(&tmpCfg)
+	if err != nil {
+		return &APIKeyResult{
+			Success: false,
+			Message: fmt.Sprintf("Failed to save API key: %s", err),
+		}, nil
+	}
+
+	a.cfg = &tmpCfg
+	a.aiClient = aiClient
+
+	return &APIKeyResult{
+		Success:     true,
+		Message:     "API key saved successfully",
+		APIKey:      apiKey,
+		LastUpdated: "Just now",
+	}, nil
+}
+
+// DeleteOpenAIAPIKey removes the OpenAI API key from database
+func (a *App) DeleteOpenAIAPIKey() (*APIKeyResult, error) {
+	err := internal.DeleteOpenAIAPIKey(a.cfg)
+	if err != nil {
+		return &APIKeyResult{
+			Success: false,
+			Message: fmt.Sprintf("Failed to delete API key: %s", err),
+		}, nil
+	}
+
+	// Clear from current config
+	a.cfg.OpenAIAPIKey = ""
+
+	return &APIKeyResult{
+		Success: true,
+		Message: "API key deleted successfully",
+	}, nil
 }

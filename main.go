@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"errors"
 	"fmt"
 	"os"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 
+	"github.com/mrbelka12000/interview_parser/internal"
 	"github.com/mrbelka12000/interview_parser/internal/app"
 	"github.com/mrbelka12000/interview_parser/internal/config"
 )
@@ -23,9 +25,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	apiKey, err := internal.GetOpenAIAPIKeyFromDB(cfg)
+	if err != nil && !errors.Is(err, internal.ErrNoKey) {
+		fmt.Printf("error getting open AI api key: %v\n", err)
+		os.Exit(1)
+	}
+	cfg.OpenAIAPIKey = apiKey
+
 	app := app.NewApp(cfg)
 	// Create application with options
-	err := wails.Run(&options.App{
+	err = wails.Run(&options.App{
 		Title:  "interview_parser_app",
 		Width:  1024,
 		Height: 768,
