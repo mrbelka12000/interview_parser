@@ -1,6 +1,6 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "interview_parser",
+  "name": "InterviewParser",
   "outputfilename": "interview_parser",
   "frontend:install": "npm install",
   "frontend:build": "npm run build",
