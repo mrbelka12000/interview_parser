@@ -1,24 +1,15 @@
 package main
 
 import (
-	"context"
 	"embed"
-	"errors"
 	"fmt"
-	"log"
 	"os"
-	"os/signal"
-	"strings"
-	"sync"
-	"syscall"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 
-	"github.com/mrbelka12000/interview_parser/internal"
 	"github.com/mrbelka12000/interview_parser/internal/app"
-	"github.com/mrbelka12000/interview_parser/internal/client"
 	"github.com/mrbelka12000/interview_parser/internal/config"
 )
 
@@ -26,60 +17,13 @@ import (
 var assets embed.FS
 
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
-
-	go func() {
-		<-sigCh
-		fmt.Println("Received Ctrl+C, shutting down...")
-		cancel()
-	}()
-
 	cfg := config.ParseConfig()
 	if cfg == nil {
 		fmt.Println("config is nil")
 		os.Exit(1)
 	}
 
-	if cfg.OpenAIAPIKey == "" {
-		log.Println("OpenAI API key is empty, getting from DB...")
-		apiKey, err := internal.GetOpenAIAPIKeyFromDB(cfg)
-		if err != nil {
-			if errors.Is(err, internal.ErrNoKey) {
-				log.Fatal("No OPENAI API key found in DB")
-			}
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		log.Println("OpenAI API key found, using it...")
-		cfg.OpenAIAPIKey = apiKey
-	} else {
-		apiKey, err := internal.GetOpenAIAPIKeyFromDB(cfg)
-		if err != nil {
-			if !errors.Is(err, internal.ErrNoKey) {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-		}
-
-		if apiKey == cfg.OpenAIAPIKey {
-			fmt.Println("provided key exists, skipping creating new one...")
-			goto skipInsert
-		}
-
-		err = internal.InsertOpenAIAPIKey(cfg)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-	}
-skipInsert:
-
-	ap := app.NewApp()
+	app := app.NewApp(cfg)
 	// Create application with options
 	err := wails.Run(&options.App{
 		Title:  "interview_parser_app",
@@ -89,87 +33,12 @@ skipInsert:
 			Assets: assets,
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
-		OnStartup:        ap.Startup,
+		OnStartup:        app.Startup,
 		Bind: []interface{}{
-			ap,
+			app,
 		},
 	})
 	if err != nil {
 		println("Error:", err.Error())
 	}
-
-	openAIClient := client.New(cfg)
-	if err := openAIClient.IsValidAPIKeysProvided(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	var (
-		chunks []string
-	)
-
-	if !cfg.LoadChunks {
-		chunks, err = internal.SplitIntoChunks(cfg)
-	} else {
-		chunks, err = internal.LoadChunks(cfg)
-	}
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	var (
-		wg            sync.WaitGroup
-		mx            sync.Mutex
-		workers       = make(chan struct{}, cfg.ParallelWorkers)
-		collectedText = make([]string, len(chunks))
-	)
-
-	for i, chunk := range chunks {
-		wg.Add(1)
-		workers <- struct{}{}
-		go func(ind int) {
-			defer func() {
-				<-workers
-				wg.Done()
-			}()
-
-			textFromChunk, err := openAIClient.Transcribe(ctx, chunk)
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-
-			mx.Lock()
-			collectedText[ind] = textFromChunk
-			mx.Unlock()
-		}(i)
-	}
-
-	wg.Wait()
-	close(workers)
-	if errors.Is(ctx.Err(), context.Canceled) {
-		log.Println("[i] cancelled by signal, skip analyze")
-		return
-	}
-
-	transcript := strings.Join(collectedText, "")
-	transcript = internal.FormatText(transcript)
-
-	if err = internal.SaveTranscript(cfg.TranscriptPath, transcript); err != nil {
-		fmt.Printf("[i] Failed to save transcript: %s\n", err)
-	}
-
-	analyzeResp, err := openAIClient.AnalyzeTranscript(ctx, transcript)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	if err = internal.SaveAnalyzeResponse(cfg.OutputPath, analyzeResp); err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	log.Printf("[i] Successfully saved and analyzed transcript: %s", cfg.OutputPath)
 }

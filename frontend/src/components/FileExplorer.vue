@@ -1,12 +1,15 @@
 <script setup>
 import {onMounted, ref} from 'vue'
-import {GetFiles, ProcessFile} from '../../wailsjs/go/main/App'
+import {GetFiles, GetFilesInDirectory} from '../../wailsjs/go/app/App'
+
+const emit = defineEmits(['file-selected', 'directory-opened'])
 
 let files = ref([])
 let selectedFile = ref(null)
-let fileDetails = ref(null)
+let currentDirectory = ref('')
 let loading = ref(false)
 let error = ref('')
+let navigationHistory = ref([])
 
 // File icon mapping
 const fileIcons = {
@@ -87,19 +90,68 @@ const formatFileSize = (bytes) => {
 }
 
 // Load files from backend
-const loadFiles = async () => {
+const loadFiles = async (directoryPath = null) => {
   loading.value = true
   error.value = ''
   
   try {
-    const result = await GetFiles()
-    files.value = result.sort((a, b) => {
-      // Directories first, then files
-      if (a.isDir && !b.isDir) return -1
-      if (!a.isDir && b.isDir) return 1
-      // Then alphabetically
-      return a.name.toLowerCase().localeCompare(b.name.toLowerCase())
-    })
+    let result
+    if (directoryPath) {
+      result = await GetFilesInDirectory(directoryPath)
+      currentDirectory.value = directoryPath
+    } else {
+      result = await GetFiles()
+      currentDirectory.value = ''
+      navigationHistory.value = []
+    }
+    
+    // Add parent directory option if not in root
+    if (directoryPath) {
+      const parentPath = directoryPath.split('/').slice(0, -1).join('/')
+      if (parentPath) {
+        files.value = [
+          {
+            name: '..',
+            path: parentPath,
+            isDir: true,
+            size: 0,
+            extension: ''
+          },
+          ...result.sort((a, b) => {
+            // Directories first, then files
+            if (a.isDir && !b.isDir) return -1
+            if (!a.isDir && b.isDir) return 1
+            // Then alphabetically
+            return a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+          })
+        ]
+      } else {
+        files.value = [
+          {
+            name: '..',
+            path: '',
+            isDir: true,
+            size: 0,
+            extension: ''
+          },
+          ...result.sort((a, b) => {
+            // Directories first, then files
+            if (a.isDir && !b.isDir) return -1
+            if (!a.isDir && b.isDir) return 1
+            // Then alphabetically
+            return a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+          })
+        ]
+      }
+    } else {
+      files.value = result.sort((a, b) => {
+        // Directories first, then files
+        if (a.isDir && !b.isDir) return -1
+        if (!a.isDir && b.isDir) return 1
+        // Then alphabetically
+        return a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+      })
+    }
   } catch (err) {
     error.value = `Failed to load files: ${err}`
     console.error('Error loading files:', err)
@@ -109,19 +161,29 @@ const loadFiles = async () => {
 }
 
 // Handle file click
-const handleFileClick = async (file) => {
+const handleFileClick = (file) => {
   selectedFile.value = file
-  loading.value = true
-  fileDetails.value = null
-  console.log(file)
-
-  try {
-    fileDetails.value = await ProcessFile(file.path)       // <- object
-  } catch (err) {
-    error.value = `Failed to process file: ${err}`
-    console.error('Error processing file:', err)
-  } finally {
-    loading.value = false
+  
+  if (file.isDir) {
+    // Navigate to directory
+    if (file.name === '..') {
+      // Go back to parent directory
+      if (navigationHistory.value.length > 0) {
+        const previousDir = navigationHistory.value.pop()
+        loadFiles(previousDir)
+      } else {
+        loadFiles() // Back to root
+      }
+    } else {
+      // Add current directory to history and navigate to subdirectory
+      if (currentDirectory.value) {
+        navigationHistory.value.push(currentDirectory.value)
+      }
+      loadFiles(file.path)
+    }
+  } else {
+    // Navigate to file content
+    emit('file-selected', file.path)
   }
 }
 
@@ -129,7 +191,6 @@ const handleFileClick = async (file) => {
 const refreshFiles = () => {
   loadFiles()
   selectedFile.value = null
-  fileDetails.value = ''
 }
 
 // Load files on component mount
@@ -183,42 +244,6 @@ onMounted(() => {
           </div>
         </div>
       </div>
-      
-      <!-- File Details -->
-      <div class="details-section">
-        <h3>File Details</h3>
-        
-        <div v-if="!selectedFile" class="no-selection">
-          <p>👆 Click on a file to see details</p>
-        </div>
-        
-        <div v-else class="file-details">
-          <div class="selected-file-header">
-            <span class="large-icon">{{ getFileIcon(selectedFile) }}</span>
-            <div>
-              <h4>{{ selectedFile.name }}</h4>
-              <p class="selected-file-path">{{ selectedFile.path }}</p>
-            </div>
-          </div>
-
-          <div v-if="fileDetails" class="file-attributes details-black">
-            <div class="attribute">
-              <strong>Type:</strong> {{ fileDetails.isDir ? 'Directory' : 'File' }}
-            </div>
-            <div v-if="!fileDetails.isDir && fileDetails.size" class="attribute">
-              <strong>Size:</strong> {{ formatFileSize(fileDetails.size) }}
-            </div>
-            <div v-if="!fileDetails.isDir && fileDetails.extension" class="attribute">
-              <strong>Extension:</strong> {{ fileDetails.extension }}
-            </div>
-          </div>
-
-          <div v-if="fileDetails" class="backend-response">
-            <h5>Backend Response:</h5>
-            <pre>{{ fileDetails }}</pre>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -267,7 +292,7 @@ onMounted(() => {
 
 .content {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr; /* was 1fr 1fr */
   gap: 20px;
   height: 600px;
 }
@@ -397,6 +422,26 @@ onMounted(() => {
 .attribute strong {
   color: #495057;
   margin-right: 8px;
+}
+
+.instructions {
+  background: #e7f3ff;
+  border: 1px solid #b3d9ff;
+  border-radius: 4px;
+  padding: 15px;
+  margin-top: 20px;
+}
+
+.instructions h5 {
+  margin: 0 0 10px 0;
+  color: #0066cc;
+  font-size: 14px;
+}
+
+.instructions p {
+  margin: 0;
+  color: #004080;
+  font-size: 13px;
 }
 
 .backend-response {

@@ -12,8 +12,6 @@ import (
 )
 
 type Config struct {
-	InputPath                 string `mapstructure:"input"`
-	OutputPath                string `mapstructure:"output"`
 	ChunkSeconds              int    `mapstructure:"chunk_seconds"`
 	GPTTranscribeModel        string `mapstructure:"gpt_transcribe_model"`
 	GPTClassifyQuestionsModel string `mapstructure:"gpt_classify_questions_model"`
@@ -24,6 +22,7 @@ type Config struct {
 	ParallelWorkers           int    `mapstructure:"parallel_workers"`
 	OpenAIAPIKey              string `mapstructure:"openai_api_key"`
 	Language                  string `mapstructure:"language"`
+	DefaultDir                string `mapstructure:"-"`
 }
 
 const (
@@ -122,11 +121,6 @@ func ParseConfig() *Config {
 		return nil
 	}
 
-	if viper.GetString("input") == "" && !viper.GetBool("load_chunks") {
-		fmt.Println("ERROR: --input or --load_chunks are required")
-		os.Exit(1)
-	}
-
 	if err := gotenv.Load(".env"); err == nil {
 		cfg.OpenAIAPIKey = os.Getenv("OPENAI_API_KEY")
 	}
@@ -140,6 +134,7 @@ func ParseConfig() *Config {
 	cfg.TranscriptPath = filepath.Join(defaultDir, fmt.Sprintf("%s_%v.txt", "transcript.txt", len(dir)))
 	cfg.DBPath = filepath.Join(defaultDir, "local.db")
 	cfg.ChunksDir = filepath.Join(defaultDir, defaultChunksDir)
+	cfg.DefaultDir = defaultDir
 
 	fmt.Printf("DBPath: %s\n", cfg.DBPath)
 

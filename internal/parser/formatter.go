@@ -1,10 +1,10 @@
-package internal
+package parser
 
 import (
 	"strings"
 )
 
-func FormatText(text string) string {
+func (p *Parser) FormatText(text string) string {
 
 	var (
 		lastDot, l int

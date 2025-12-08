@@ -1,4 +1,4 @@
-package internal
+package parser
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"github.com/mrbelka12000/interview_parser/internal/client"
 )
 
-func SaveTranscript(outputFile, transcript string) error {
+func (p *Parser) SaveTranscript(outputFile, transcript string) error {
 	// save text into file
 	f, err := os.OpenFile(outputFile, os.O_WRONLY|os.O_CREATE, os.ModePerm)
 	if err != nil {
@@ -23,7 +23,7 @@ func SaveTranscript(outputFile, transcript string) error {
 	return nil
 }
 
-func SaveAnalyzeResponse(outputFile string, response client.AnalyzeResponse) error {
+func (p *Parser) SaveAnalyzeResponse(outputFile string, response client.AnalyzeResponse) error {
 	if err := os.Remove(outputFile); err != nil {
 		if !os.IsNotExist(err) {
 			fmt.Printf("Error removing file %s\n", outputFile)

@@ -1,4 +1,4 @@
-package internal
+package parser
 
 import (
 	"fmt"
@@ -38,14 +38,14 @@ func getDuration(mediaPath string) (float64, error) {
 
 // SplitIntoChunks splits audio file into N-second chunks using ffmpeg.
 // Produces .m4a chunks inside output/chunks.
-func SplitIntoChunks(cfg *config.Config) ([]string, error) {
-	file, err := os.Open(cfg.InputPath)
+func (p *Parser) SplitIntoChunks(cfg *config.Config, inputPath string) ([]string, error) {
+	file, err := os.Open(inputPath)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
 
-	duration, err := getDuration(cfg.InputPath)
+	duration, err := getDuration(inputPath)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,7 @@ func SplitIntoChunks(cfg *config.Config) ([]string, error) {
 		idx        int
 	)
 
-	base := strings.TrimSuffix(filepath.Base(cfg.InputPath), filepath.Ext(cfg.InputPath))
+	base := strings.TrimSuffix(filepath.Base(inputPath), filepath.Ext(inputPath))
 
 	for start < duration {
 		outPath := filepath.Join(cfg.ChunksDir, fmt.Sprintf("%s_chunk_%03d.m4a", base, idx))
@@ -72,7 +72,7 @@ func SplitIntoChunks(cfg *config.Config) ([]string, error) {
 			"-y",
 			"-ss", fmt.Sprintf("%.2f", start),
 			"-t", strconv.Itoa(cfg.ChunkSeconds),
-			"-i", cfg.InputPath,
+			"-i", inputPath,
 			"-vn",
 			"-acodec", "aac",
 			outPath,
@@ -96,7 +96,7 @@ func SplitIntoChunks(cfg *config.Config) ([]string, error) {
 	return chunkPaths, nil
 }
 
-func LoadChunks(cfg *config.Config) ([]string, error) {
+func (p *Parser) LoadChunks(cfg *config.Config) ([]string, error) {
 	dir, err := os.ReadDir(cfg.ChunksDir)
 	if err != nil {
 		return nil, fmt.Errorf("read dir error: %w", err)

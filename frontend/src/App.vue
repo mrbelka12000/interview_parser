@@ -1,12 +1,24 @@
 <script setup>
 import FileExplorer from './components/FileExplorer.vue'
 import HelloWorld from './components/HelloWorld.vue'
+import FileContent from './components/FileContent.vue'
 import { ref } from 'vue'
 
 const currentView = ref('explorer')
+const selectedFilePath = ref('')
 
 const switchView = (view) => {
   currentView.value = view
+}
+
+const showFileContent = (filePath) => {
+  selectedFilePath.value = filePath
+  currentView.value = 'fileContent'
+}
+
+const backToFileExplorer = () => {
+  currentView.value = 'explorer'
+  selectedFilePath.value = ''
 }
 </script>
 
@@ -33,7 +45,24 @@ const switchView = (view) => {
     </header>
     
     <main class="app-main">
-      <FileExplorer v-if="currentView === 'explorer'" />
+      <!-- Breadcrumb navigation -->
+      <div v-if="currentView === 'fileContent'" class="breadcrumb">
+        <button @click="backToFileExplorer" class="breadcrumb-link">
+          ← Back to File Explorer
+        </button>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current">File Content</span>
+      </div>
+      
+      <FileExplorer 
+        v-if="currentView === 'explorer'" 
+        @file-selected="showFileContent" 
+      />
+      <FileContent 
+        v-else-if="currentView === 'fileContent'" 
+        :file-path="selectedFilePath" 
+        @back="backToFileExplorer" 
+      />
       <HelloWorld v-else-if="currentView === 'greet'" />
     </main>
   </div>
@@ -111,6 +140,41 @@ body {
   flex: 1;
   padding: 0;
   background: white;
+}
+
+.breadcrumb {
+  background: #f8f9fa;
+  padding: 15px 20px;
+  border-bottom: 1px solid #dee2e6;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+}
+
+.breadcrumb-link {
+  background: none;
+  border: none;
+  color: #007bff;
+  cursor: pointer;
+  font-size: 14px;
+  text-decoration: none;
+  padding: 0;
+  transition: color 0.3s;
+}
+
+.breadcrumb-link:hover {
+  color: #0056b3;
+  text-decoration: underline;
+}
+
+.breadcrumb-separator {
+  margin: 0 10px;
+  color: #6c757d;
+}
+
+.breadcrumb-current {
+  color: #495057;
+  font-weight: 500;
 }
 
 @media (max-width: 768px) {
