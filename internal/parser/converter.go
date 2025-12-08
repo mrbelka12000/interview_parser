@@ -15,7 +15,7 @@ import (
 // getDuration returns media duration in seconds using ffprobe.
 func getDuration(mediaPath string) (float64, error) {
 	cmd := exec.Command(
-		"ffprobe",
+		ffprobePath(),
 		"-v", "error",
 		"-show_entries", "format=duration",
 		"-of", "default=noprint_wrappers=1:nokey=1",
@@ -67,7 +67,7 @@ func (p *Parser) SplitIntoChunks(cfg *config.Config, inputPath string) ([]string
 		outPath := filepath.Join(cfg.ChunksDir, fmt.Sprintf("%s_chunk_%03d.m4a", base, idx))
 
 		cmd := exec.Command(
-			"ffmpeg",
+			ffmpegPath(),
 			"-loglevel", "error",
 			"-y",
 			"-ss", fmt.Sprintf("%.2f", start),
@@ -109,3 +109,18 @@ func (p *Parser) LoadChunks(cfg *config.Config) ([]string, error) {
 
 	return chunkPaths, nil
 }
+
+func bundledBinary(name string) string {
+	exe, err := os.Executable()
+	if err == nil {
+		dir := filepath.Dir(exe)
+		path := filepath.Join(dir, name)
+		if _, err := os.Stat(path); err == nil {
+			return path // bundled version
+		}
+	}
+	return name // fallback on PATH for dev mode
+}
+
+func ffprobePath() string { return bundledBinary("ffprobe") }
+func ffmpegPath() string  { return bundledBinary("ffmpeg") }

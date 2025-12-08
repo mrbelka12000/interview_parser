@@ -135,9 +135,11 @@ Interview Parser Desktop App provides a user-friendly graphical interface for pr
 
 2. **Production mode**:
    ```bash
-   wails build
-   # Run the generated executable
-   ./build/bin/interview_parser_app
+    wails build -platform darwin/arm64
+
+    APP="build/bin/interview_parser.app"
+    cp /usr/local/bin/ffprobe "$APP/Contents/MacOS/ffprobe"
+    cp /usr/local/bin/ffmpeg  "$APP/Contents/MacOS/ffmpeg"
    ```
 
 ## Usage
