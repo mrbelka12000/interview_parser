@@ -11,20 +11,14 @@ import (
 )
 
 type AnalyzeResponse struct {
-	QuestionsAnswered []struct {
-		Question      string  `json:"question"`
-		AnswerSummary string  `json:"answer"`
-		FullAnswer    string  `json:"full_answer"`
-		Accuracy      float64 `json:"accuracy"`
-		Questioner    string  `json:"questioner"`
-		Answerer      string  `json:"answerer"`
-	} `json:"answered"`
-	QuestionsUnanswered []struct {
-		Question         string `json:"question"`
-		Questioner       string `json:"questioner"`
-		FullAnswer       string `json:"full_answer"`
-		ReasonUnanswered string `json:"reason"`
-	} `json:"unanswered"`
+	Questions []struct {
+		Question         string  `json:"question"`
+		FullAnswer       string  `json:"full_answer"`
+		Accuracy         float64 `json:"accuracy"`
+		Questioner       string  `json:"questioner"`
+		Answerer         string  `json:"answerer"`
+		ReasonUnanswered string  `json:"reason"`
+	} `json:"questions"`
 }
 
 func (c *Client) AnalyzeTranscript(ctx context.Context, text string) (out AnalyzeResponse, err error) {

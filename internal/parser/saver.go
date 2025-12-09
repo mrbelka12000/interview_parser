@@ -36,25 +36,21 @@ func (p *Parser) SaveAnalyzeResponse(outputFile string, response client.AnalyzeR
 	}
 	defer f.Close()
 
-	for _, v := range response.QuestionsAnswered {
-		_, err = f.WriteString(fmt.Sprintf(`
-###  %v
+	for _, q := range response.Questions {
+		switch {
+		case q.Accuracy > 0.7:
+			_, err = f.WriteString(fmt.Sprintf(`
 %v
 %v
-`, v.Question, v.AnswerSummary, v.Accuracy))
-		if err != nil {
-			return fmt.Errorf("error writing to file: %v", err)
-		}
-	}
-
-	for _, v := range response.QuestionsUnanswered {
-		_, err = f.WriteString(fmt.Sprintf(`
-###  %v
+%v
+`, q.Question, q.FullAnswer, q.Accuracy))
+		default:
+			_, err = f.WriteString(fmt.Sprintf(`
 %v
 %v
-`, v.Question, v.FullAnswer, v.ReasonUnanswered))
-		if err != nil {
-			return fmt.Errorf("error writing to file: %v", err)
+%v
+%v
+`, q.Question, q.FullAnswer, q.ReasonUnanswered, q.Accuracy))
 		}
 	}
 
