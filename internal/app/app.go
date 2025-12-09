@@ -136,8 +136,8 @@ func (a *App) ProcessFileForTranscription(filePath string, loadChunks bool) (*Tr
 
 	// Generate unique output paths for this transcription
 	baseName := strings.TrimSuffix(filepath.Base(filePath), filepath.Ext(filePath))
-	cfg.TranscriptPath = filepath.Join(cfg.DefaultDir, fmt.Sprintf("%s_transcript_%v.txt", baseName, len(dir)))
-	outputPath := filepath.Join(cfg.DefaultDir, fmt.Sprintf("%s_analysis_%v.md", baseName, len(dir)))
+	transcriptPath := filepath.Join(cfg.DefaultTranscriptDir, fmt.Sprintf("%s_transcript_%v.txt", baseName, len(dir)))
+	analyzePath := filepath.Join(cfg.DefaultAnalyzeDir, fmt.Sprintf("%s_analysis_%v.md", baseName, len(dir)))
 
 	// Send initial progress
 	a.sendProgress(5, "Loading file...", "Reading audio/video file...")
@@ -173,7 +173,7 @@ func (a *App) ProcessFileForTranscription(filePath string, loadChunks bool) (*Tr
 
 	// Step 2: Transcribe chunks using the provided parser logic
 	a.sendProgress(25, "Transcribing audio...", "Converting speech to text using AI...")
-	
+
 	var (
 		wg            sync.WaitGroup
 		mx            sync.Mutex
@@ -185,13 +185,13 @@ func (a *App) ProcessFileForTranscription(filePath string, loadChunks bool) (*Tr
 	for i, chunk := range chunks {
 		wg.Add(1)
 		workers <- struct{}{}
-		go func(ind int) {
+		go func(ind int, chunkVar string) {
 			defer func() {
 				<-workers
 				wg.Done()
 			}()
 
-			textFromChunk, err := a.aiClient.Transcribe(a.ctx, chunk)
+			textFromChunk, err := a.aiClient.Transcribe(a.ctx, chunkVar)
 			if err != nil {
 				log.Printf("Error transcribing chunk %d: %v", ind, err)
 				return
@@ -204,11 +204,11 @@ func (a *App) ProcessFileForTranscription(filePath string, loadChunks bool) (*Tr
 			progress := 25 + int(float64(completed)/float64(len(chunks))*35) // 25% to 60%
 			a.sendProgress(progress, "Processing chunks...", fmt.Sprintf("Processed %d/%d audio segments...", completed, len(chunks)))
 			mx.Unlock()
-		}(i)
+
+		}(i, chunk)
 	}
 
 	wg.Wait()
-	close(workers)
 
 	if errors.Is(a.ctx.Err(), context.Canceled) {
 		log.Println("[i] cancelled by signal, skip analyze")
@@ -225,26 +225,54 @@ func (a *App) ProcessFileForTranscription(filePath string, loadChunks bool) (*Tr
 
 	// Step 4: Save transcript
 	a.sendProgress(75, "Saving transcript...", "Writing transcript file...")
-	if err = a.parser.SaveTranscript(cfg.TranscriptPath, transcript); err != nil {
+	if err = a.parser.SaveTranscript(transcriptPath, transcript); err != nil {
 		return &TranscriptionResult{
 			Success: false,
 			Message: fmt.Sprintf("failed to save transcript: %s", err),
 		}, nil
 	}
 
-	// Step 5: Analyze transcript
-	a.sendProgress(85, "Analyzing content...", "Extracting questions and analyzing interview...")
-	analyzeResp, err := a.aiClient.AnalyzeTranscript(a.ctx, transcript)
-	if err != nil {
-		return &TranscriptionResult{
-			Success: false,
-			Message: fmt.Sprintf("failed to analyze transcript: %s", err),
-		}, nil
+	transcriptBatches := a.parser.BatchTranscript(transcript)
+	analyzeRespBatches := make([][]client.Question, len(transcriptBatches))
+	completed = 0
+	for i, batch := range transcriptBatches {
+		wg.Add(1)
+		workers <- struct{}{}
+		go func(ind int, b string) {
+			defer func() {
+				<-workers
+				wg.Done()
+			}()
+
+			analyzeRespTmp, err := a.aiClient.AnalyzeTranscript(a.ctx, b)
+			if err != nil {
+				log.Printf("Error analyzing transcript %d: %v", ind, err)
+				return
+			}
+
+			mx.Lock()
+			analyzeRespBatches[ind] = analyzeRespTmp.Questions
+			completed++
+			progress := 85 + int(float64(completed)/float64(len(transcriptBatches))*10) // 85% to 95%
+
+			a.sendProgress(progress, "Analyzing transcript...", fmt.Sprintf("Analyzed %d/%d tranascript segments...", completed, len(transcriptBatches)))
+			mx.Unlock()
+
+		}(i, batch)
+
+	}
+
+	wg.Wait()
+	close(workers)
+
+	var analyzeResp client.AnalyzeResponse
+	for _, batch := range analyzeRespBatches {
+		analyzeResp.Questions = append(analyzeResp.Questions, batch...)
 	}
 
 	// Step 6: Save analysis response
-	a.sendProgress(95, "Saving analysis...", "Writing analysis file...")
-	if err = a.parser.SaveAnalyzeResponse(outputPath, analyzeResp); err != nil {
+	a.sendProgress(97, "Saving analysis...", "Writing analysis file...")
+	if err = a.parser.SaveAnalyzeResponse(analyzePath, analyzeResp); err != nil {
 		return &TranscriptionResult{
 			Success: false,
 			Message: fmt.Sprintf("failed to save analysis: %s", err),
@@ -257,8 +285,8 @@ func (a *App) ProcessFileForTranscription(filePath string, loadChunks bool) (*Tr
 	return &TranscriptionResult{
 		Success:        true,
 		Message:        "File processed successfully",
-		TranscriptPath: cfg.TranscriptPath,
-		AnalysisPath:   outputPath,
+		TranscriptPath: transcriptPath,
+		AnalysisPath:   analyzePath,
 	}, nil
 }
 
@@ -270,7 +298,7 @@ func (a *App) sendProgress(percentage int, stage, details string) {
 		Details:    details,
 		IsComplete: percentage >= 100,
 	}
-	
+
 	// Send event to frontend
 	runtime.EventsEmit(a.ctx, "progress", report)
 }
@@ -367,7 +395,7 @@ func (a *App) ReadFileContent(filePath string) (*FileContent, error) {
 
 // GetFilesInDirectory returns files in a specific directory
 func (a *App) GetFilesInDirectory(dirPath string) ([]FileInfo, error) {
-	var files []FileInfo
+	files := []FileInfo{}
 
 	// Read directory contents
 	entries, err := os.ReadDir(dirPath)
@@ -422,7 +450,7 @@ type APIKeyResult struct {
 	Success     bool   `json:"success"`
 	Message     string `json:"message,omitempty"`
 	APIKey      string `json:"apiKey,omitempty"`
-	LastUpdated  string `json:"lastUpdated,omitempty"`
+	LastUpdated string `json:"lastUpdated,omitempty"`
 }
 
 // ProgressReport represents progress update during processing

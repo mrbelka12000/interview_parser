@@ -33,6 +33,7 @@ func main() {
 	cfg.OpenAIAPIKey = apiKey
 
 	app := app.NewApp(cfg)
+
 	// Create application with options
 	err = wails.Run(&options.App{
 		Title: "interview_parser_app",
@@ -50,3 +51,9 @@ func main() {
 		println("Error:", err.Error())
 	}
 }
+
+/*
+TODO:
+dashboard with metrics
+Integrate audio parser
+*/

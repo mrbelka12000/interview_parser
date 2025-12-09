@@ -18,15 +18,18 @@ type Config struct {
 	DBPath                    string `mapstructure:"-"`
 	LoadChunks                bool   `mapstructure:"load_chunks"`
 	ChunksDir                 string `mapstructure:"-"`
-	TranscriptPath            string `mapstructure:"-"`
 	ParallelWorkers           int    `mapstructure:"parallel_workers"`
 	OpenAIAPIKey              string `mapstructure:"openai_api_key"`
 	Language                  string `mapstructure:"language"`
 	DefaultDir                string `mapstructure:"-"`
+	DefaultTranscriptDir      string `mapstructure:"-"`
+	DefaultAnalyzeDir         string `mapstructure:"-"`
 }
 
 const (
 	defaultDirName                   = ".interview_parser"
+	defaultTranscriptDir             = "transcripts"
+	defaultAnalyzeDir                = "analyzes"
 	defaultChunksDir                 = "output/chunks"
 	defaultChunksSeconds             = 100
 	defaultOutputName                = "analytics.md"
@@ -125,16 +128,22 @@ func ParseConfig() *Config {
 		cfg.OpenAIAPIKey = os.Getenv("OPENAI_API_KEY")
 	}
 
-	dir, err := os.ReadDir(defaultDir)
-	if err != nil {
-		fmt.Printf("Failed to read working dir: %s\n", err)
-		return nil
-	}
-
-	cfg.TranscriptPath = filepath.Join(defaultDir, fmt.Sprintf("%s_%v.txt", "transcript.txt", len(dir)))
 	cfg.DBPath = filepath.Join(defaultDir, "local.db")
 	cfg.ChunksDir = filepath.Join(defaultDir, defaultChunksDir)
 	cfg.DefaultDir = defaultDir
+	cfg.DefaultTranscriptDir = filepath.Join(defaultDir, defaultTranscriptDir)
+	cfg.DefaultAnalyzeDir = filepath.Join(defaultDir, defaultAnalyzeDir)
+
+	if err := os.Mkdir(cfg.DefaultTranscriptDir, os.ModePerm); err != nil {
+		if !os.IsExist(err) {
+			fmt.Printf("Failed to create default transcript directory: %s\n", err)
+		}
+	}
+	if err := os.Mkdir(cfg.DefaultAnalyzeDir, os.ModePerm); err != nil {
+		if !os.IsExist(err) {
+			fmt.Printf("Failed to create default analyze directory: %s\n", err)
+		}
+	}
 
 	fmt.Printf("DBPath: %s\n", cfg.DBPath)
 

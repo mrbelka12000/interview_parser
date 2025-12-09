@@ -10,16 +10,19 @@ import (
 	"github.com/openai/openai-go"
 )
 
-type AnalyzeResponse struct {
-	Questions []struct {
+type (
+	AnalyzeResponse struct {
+		Questions []Question `json:"questions"`
+	}
+	Question struct {
 		Question         string  `json:"question"`
 		FullAnswer       string  `json:"full_answer"`
 		Accuracy         float64 `json:"accuracy"`
 		Questioner       string  `json:"questioner"`
 		Answerer         string  `json:"answerer"`
 		ReasonUnanswered string  `json:"reason"`
-	} `json:"questions"`
-}
+	}
+)
 
 func (c *Client) AnalyzeTranscript(ctx context.Context, text string) (out AnalyzeResponse, err error) {
 	now := time.Now()

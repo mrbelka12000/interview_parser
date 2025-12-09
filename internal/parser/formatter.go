@@ -26,3 +26,31 @@ func (p *Parser) FormatText(text string) string {
 
 	return newText.String()
 }
+
+func (p *Parser) BatchTranscript(text string) []string {
+	lines := strings.Split(text, "\n")
+	var (
+		out           []string
+		l             int
+		mod           = 50
+		needToCollect bool
+	)
+
+	for i, line := range lines {
+		if i%mod == 0 && i > 0 {
+			if len(line) > 0 && line[len(line)-1] == '?' {
+				needToCollect = true
+				continue
+			}
+			out = append(out, strings.Join(lines[l:i+1], "\n"))
+			l = i + 1
+		}
+		if needToCollect {
+			out = append(out, strings.Join(lines[l:i+1], "\n"))
+			l = i + 1
+			needToCollect = false
+		}
+	}
+
+	return out
+}
