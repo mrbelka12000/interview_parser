@@ -35,12 +35,11 @@ func main() {
 	app := app.NewApp(cfg)
 	// Create application with options
 	err = wails.Run(&options.App{
-		Title:  "interview_parser_app",
-		Width:  1024,
-		Height: 768,
+		Title: "interview_parser_app",
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
+		Fullscreen:       true,
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup:        app.Startup,
 		Bind: []interface{}{
