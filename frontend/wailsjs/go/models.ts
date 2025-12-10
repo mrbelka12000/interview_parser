@@ -18,6 +18,42 @@ export namespace app {
 	        this.lastUpdated = source["lastUpdated"];
 	    }
 	}
+	export class DeviceResult {
+	    success: boolean;
+	    message?: string;
+	    devices?: audiocapture.AudioDevice[];
+	    device?: audiocapture.AudioDevice;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeviceResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.message = source["message"];
+	        this.devices = this.convertValues(source["devices"], audiocapture.AudioDevice);
+	        this.device = this.convertValues(source["device"], audiocapture.AudioDevice);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class FileContent {
 	    name: string;
 	    path: string;
@@ -62,6 +98,26 @@ export namespace app {
 	        this.extension = source["extension"];
 	    }
 	}
+	export class RecordingResult {
+	    success: boolean;
+	    message: string;
+	    filePath?: string;
+	    duration?: number;
+	    dataSize?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new RecordingResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.message = source["message"];
+	        this.filePath = source["filePath"];
+	        this.duration = source["duration"];
+	        this.dataSize = source["dataSize"];
+	    }
+	}
 	export class TranscriptionResult {
 	    success: boolean;
 	    message: string;
@@ -78,6 +134,31 @@ export namespace app {
 	        this.message = source["message"];
 	        this.transcriptPath = source["transcriptPath"];
 	        this.analysisPath = source["analysisPath"];
+	    }
+	}
+
+}
+
+export namespace audiocapture {
+	
+	export class AudioDevice {
+	    id: string;
+	    name: string;
+	    isInput: boolean;
+	    isOutput: boolean;
+	    isDefault: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new AudioDevice(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.isInput = source["isInput"];
+	        this.isOutput = source["isOutput"];
+	        this.isDefault = source["isDefault"];
 	    }
 	}
 

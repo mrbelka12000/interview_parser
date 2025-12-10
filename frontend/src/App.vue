@@ -4,6 +4,7 @@ import HelloWorld from './components/HelloWorld.vue'
 import FileContent from './components/FileContent.vue'
 import FileUpload from './components/FileUpload.vue'
 import ApiKeyManager from './components/ApiKeyManager.vue'
+import AudioRecorder from './components/AudioRecorder.vue'
 import { ref } from 'vue'
 
 const currentView = ref('explorer')
@@ -41,7 +42,14 @@ const backToFileExplorer = () => {
           :class="{ active: currentView === 'upload' }"
           class="nav-tab"
         >
-          🎤 Upload & Transcribe
+          📤 Upload & Transcribe
+        </button>
+        <button 
+          @click="switchView('record')" 
+          :class="{ active: currentView === 'record' }"
+          class="nav-tab"
+        >
+          🎙️ Record Audio
         </button>
         <button 
           @click="switchView('apikey')" 
@@ -76,6 +84,9 @@ const backToFileExplorer = () => {
       />
       <FileUpload 
         v-else-if="currentView === 'upload'" 
+      />
+      <AudioRecorder 
+        v-else-if="currentView === 'record'" 
       />
       <ApiKeyManager 
         v-else-if="currentView === 'apikey'" 

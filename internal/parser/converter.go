@@ -61,10 +61,11 @@ func (p *Parser) SplitIntoChunks(cfg *config.Config, inputPath string) ([]string
 		idx        int
 	)
 
+	ext, codec := outputFormatFor(inputPath)
 	base := strings.TrimSuffix(filepath.Base(inputPath), filepath.Ext(inputPath))
 
 	for start < duration {
-		outPath := filepath.Join(cfg.ChunksDir, fmt.Sprintf("%s_chunk_%03d.m4a", base, idx))
+		outPath := filepath.Join(cfg.ChunksDir, fmt.Sprintf("%s_chunk_%03d%s", base, idx, ext))
 
 		cmd := exec.Command(
 			ffmpegPath(),
@@ -74,7 +75,7 @@ func (p *Parser) SplitIntoChunks(cfg *config.Config, inputPath string) ([]string
 			"-t", strconv.Itoa(cfg.ChunkSeconds),
 			"-i", inputPath,
 			"-vn",
-			"-acodec", "aac",
+			"-acodec", codec,
 			outPath,
 		)
 
@@ -124,3 +125,12 @@ func bundledBinary(name string) string {
 
 func ffprobePath() string { return bundledBinary("ffprobe") }
 func ffmpegPath() string  { return bundledBinary("ffmpeg") }
+
+func outputFormatFor(inputPath string) (ext, codec string) {
+	switch strings.ToLower(filepath.Ext(inputPath)) {
+	case ".wav":
+		return ".wav", "pcm_s16le"
+	default:
+		return ".m4a", "aac"
+	}
+}

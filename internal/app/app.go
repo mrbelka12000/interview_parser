@@ -9,10 +9,12 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/mrbelka12000/interview_parser/internal"
+	audiocapture "github.com/mrbelka12000/interview_parser/internal/audio_capture"
 	"github.com/mrbelka12000/interview_parser/internal/client"
 	"github.com/mrbelka12000/interview_parser/internal/config"
 	"github.com/mrbelka12000/interview_parser/internal/parser"
@@ -29,18 +31,25 @@ type FileInfo struct {
 
 // App struct
 type App struct {
-	ctx      context.Context
-	cfg      *config.Config
-	aiClient *client.Client
-	parser   *parser.Parser
+	ctx           context.Context
+	cfg           *config.Config
+	aiClient      *client.Client
+	parser        *parser.Parser
+	audioRecorder *audiocapture.AudioRecorder
 }
 
 // NewApp creates a new App application struct
 func NewApp(cfg *config.Config) *App {
+	audioRecorder, err := audiocapture.NewAudioRecorder(cfg.AudioSampleRate, cfg.AudioChannels, cfg.AudioBitrate)
+	if err != nil {
+		log.Println(fmt.Sprintf("Error creating audio recorder %v", err))
+	}
+
 	return &App{
-		cfg:      cfg,
-		parser:   parser.NewParser(cfg),
-		aiClient: client.New(cfg),
+		cfg:           cfg,
+		parser:        parser.NewParser(cfg),
+		aiClient:      client.New(cfg),
+		audioRecorder: audioRecorder,
 	}
 }
 
@@ -222,7 +231,6 @@ func (a *App) ProcessFileForTranscription(filePath string, loadChunks bool) (*Tr
 	a.sendProgress(65, "Formatting transcript...", "Organizing and formatting text...")
 	transcript := strings.Join(collectedText, "")
 	transcript = a.parser.FormatText(transcript)
-
 	// Step 4: Save transcript
 	a.sendProgress(75, "Saving transcript...", "Writing transcript file...")
 	if err = a.parser.SaveTranscript(transcriptPath, transcript); err != nil {
@@ -548,5 +556,202 @@ func (a *App) DeleteOpenAIAPIKey() (*APIKeyResult, error) {
 	return &APIKeyResult{
 		Success: true,
 		Message: "API key deleted successfully",
+	}, nil
+}
+
+// RecordingResult represents the result of audio recording operations
+type RecordingResult struct {
+	Success  bool    `json:"success"`
+	Message  string  `json:"message"`
+	FilePath string  `json:"filePath,omitempty"`
+	Duration float64 `json:"duration,omitempty"`
+	DataSize int     `json:"dataSize,omitempty"`
+}
+
+// StartAudioRecording starts recording audio from microphone
+func (a *App) StartAudioRecording() (*RecordingResult, error) {
+	if a.audioRecorder == nil {
+		return &RecordingResult{
+			Success: false,
+			Message: "Audio recorder not initialized",
+		}, nil
+	}
+
+	err := a.audioRecorder.StartRecording()
+	if err != nil {
+		return &RecordingResult{
+			Success: false,
+			Message: fmt.Sprintf("Failed to start recording: %s", err),
+		}, nil
+	}
+
+	return &RecordingResult{
+		Success: true,
+		Message: "Recording started successfully",
+	}, nil
+}
+
+// StopAudioRecording stops the audio recording and returns the recording info
+func (a *App) StopAudioRecording() (*RecordingResult, error) {
+	if a.audioRecorder == nil {
+		return &RecordingResult{
+			Success: false,
+			Message: "Audio recorder not initialized",
+		}, nil
+	}
+
+	err := a.audioRecorder.StopRecording()
+	if err != nil {
+		return &RecordingResult{
+			Success: false,
+			Message: fmt.Sprintf("Failed to stop recording: %s", err),
+		}, nil
+	}
+
+	// Get audio info
+	info := a.audioRecorder.GetAudioInfo()
+
+	return &RecordingResult{
+		Success:  true,
+		Message:  "Recording stopped successfully",
+		DataSize: info["data_size"].(int),
+		Duration: info["duration_seconds"].(float64),
+	}, nil
+}
+
+// SaveRecording saves the recorded audio to a file
+func (a *App) SaveRecording(filename string) (*RecordingResult, error) {
+	if a.audioRecorder == nil {
+		return &RecordingResult{
+			Success: false,
+			Message: "Audio recorder not initialized",
+		}, nil
+	}
+
+	if filename == "" {
+		// Generate default filename with timestamp
+		timestamp := time.Now().Format("20060102_150405")
+		filename = fmt.Sprintf("interview_recording_%s.wav", timestamp)
+	}
+
+	// Ensure filename has .wav extension
+	if !strings.HasSuffix(strings.ToLower(filename), ".wav") {
+		filename += ".wav"
+	}
+
+	// Save to default directory
+	filePath := filepath.Join(a.cfg.DefaultDir, filename)
+
+	err := a.audioRecorder.SaveAsWAV(filePath)
+	if err != nil {
+		return &RecordingResult{
+			Success: false,
+			Message: fmt.Sprintf("Failed to save recording: %s", err),
+		}, nil
+	}
+
+	// Get audio info
+	info := a.audioRecorder.GetAudioInfo()
+
+	return &RecordingResult{
+		Success:  true,
+		Message:  "Recording saved successfully",
+		FilePath: filePath,
+		Duration: info["duration_seconds"].(float64),
+		DataSize: info["data_size"].(int),
+	}, nil
+}
+
+// SaveAndProcessRecording saves the recording and immediately processes it for transcription
+func (a *App) SaveAndProcessRecording(filename string) (*TranscriptionResult, error) {
+	// First save the recording
+	saveResult, err := a.SaveRecording(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	if !saveResult.Success {
+		return &TranscriptionResult{
+			Success: false,
+			Message: saveResult.Message,
+		}, nil
+	}
+
+	// Then process the saved file for transcription
+	return a.ProcessFileForTranscription(saveResult.FilePath, false)
+}
+
+// GetRecordingStatus returns the current recording status
+func (a *App) GetRecordingStatus() (*RecordingResult, error) {
+	if a.audioRecorder == nil {
+		return &RecordingResult{
+			Success: false,
+			Message: "Audio recorder not initialized",
+		}, nil
+	}
+
+	info := a.audioRecorder.GetAudioInfo()
+
+	return &RecordingResult{
+		Success:  true,
+		Message:  "Status retrieved successfully",
+		DataSize: info["data_size"].(int),
+		Duration: info["duration_seconds"].(float64),
+	}, nil
+}
+
+// DeviceResult represents the result of device operations
+type DeviceResult struct {
+	Success bool                       `json:"success"`
+	Message string                     `json:"message,omitempty"`
+	Devices []audiocapture.AudioDevice `json:"devices,omitempty"`
+	Device  *audiocapture.AudioDevice  `json:"device,omitempty"`
+}
+
+// GetInputDevices returns a list of available input devices
+func (a *App) GetInputDevices() (*DeviceResult, error) {
+	if a.audioRecorder == nil {
+		return &DeviceResult{
+			Success: false,
+			Message: "Audio recorder not initialized",
+		}, nil
+	}
+
+	devices, err := a.audioRecorder.GetInputDevices()
+	if err != nil {
+		return &DeviceResult{
+			Success: false,
+			Message: fmt.Sprintf("Failed to get input devices: %s", err),
+		}, nil
+	}
+
+	return &DeviceResult{
+		Success: true,
+		Message: "Input devices retrieved successfully",
+		Devices: devices,
+	}, nil
+}
+
+
+// SetAudioInputDevice sets the audio input device for recording
+func (a *App) SetAudioInputDevice(deviceID string) (*DeviceResult, error) {
+	if a.audioRecorder == nil {
+		return &DeviceResult{
+			Success: false,
+			Message: "Audio recorder not initialized",
+		}, nil
+	}
+
+	err := a.audioRecorder.SetInputDeviceByID(deviceID)
+	if err != nil {
+		return &DeviceResult{
+			Success: false,
+			Message: fmt.Sprintf("Failed to set input device: %s", err),
+		}, nil
+	}
+
+	return &DeviceResult{
+		Success: true,
+		Message: "Input device set successfully",
 	}, nil
 }

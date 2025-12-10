@@ -14,8 +14,16 @@ export function GetFilesInDirectory(arg1) {
   return window['go']['app']['App']['GetFilesInDirectory'](arg1);
 }
 
+export function GetInputDevices() {
+  return window['go']['app']['App']['GetInputDevices']();
+}
+
 export function GetOpenAIAPIKey() {
   return window['go']['app']['App']['GetOpenAIAPIKey']();
+}
+
+export function GetRecordingStatus() {
+  return window['go']['app']['App']['GetRecordingStatus']();
 }
 
 export function Greet(arg1) {
@@ -38,6 +46,26 @@ export function ReadFileContent(arg1) {
   return window['go']['app']['App']['ReadFileContent'](arg1);
 }
 
+export function SaveAndProcessRecording(arg1) {
+  return window['go']['app']['App']['SaveAndProcessRecording'](arg1);
+}
+
 export function SaveOpenAIAPIKey(arg1) {
   return window['go']['app']['App']['SaveOpenAIAPIKey'](arg1);
+}
+
+export function SaveRecording(arg1) {
+  return window['go']['app']['App']['SaveRecording'](arg1);
+}
+
+export function SetAudioInputDevice(arg1) {
+  return window['go']['app']['App']['SetAudioInputDevice'](arg1);
+}
+
+export function StartAudioRecording() {
+  return window['go']['app']['App']['StartAudioRecording']();
+}
+
+export function StopAudioRecording() {
+  return window['go']['app']['App']['StopAudioRecording']();
 }

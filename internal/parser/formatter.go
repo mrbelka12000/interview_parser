@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -22,12 +23,13 @@ func (p *Parser) FormatText(text string) string {
 		}
 	}
 
-	newText.WriteString(text[l:lastDot+1] + "\n") // add answer to prev question
+	newText.WriteString(text[l:] + "\n") // add answer to prev question
 
 	return newText.String()
 }
 
 func (p *Parser) BatchTranscript(text string) []string {
+	fmt.Println(text)
 	lines := strings.Split(text, "\n")
 	var (
 		out           []string
@@ -51,6 +53,8 @@ func (p *Parser) BatchTranscript(text string) []string {
 			needToCollect = false
 		}
 	}
+
+	out = append(out, strings.Join(lines[l:], "\n"))
 
 	return out
 }

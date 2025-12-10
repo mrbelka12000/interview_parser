@@ -8,7 +8,11 @@ export function GetFiles():Promise<Array<app.FileInfo>>;
 
 export function GetFilesInDirectory(arg1:string):Promise<Array<app.FileInfo>>;
 
+export function GetInputDevices():Promise<app.DeviceResult>;
+
 export function GetOpenAIAPIKey():Promise<app.APIKeyResult>;
+
+export function GetRecordingStatus():Promise<app.RecordingResult>;
 
 export function Greet(arg1:string):Promise<string>;
 
@@ -20,4 +24,14 @@ export function ProcessFileForTranscription(arg1:string,arg2:boolean):Promise<ap
 
 export function ReadFileContent(arg1:string):Promise<app.FileContent>;
 
+export function SaveAndProcessRecording(arg1:string):Promise<app.TranscriptionResult>;
+
 export function SaveOpenAIAPIKey(arg1:string):Promise<app.APIKeyResult>;
+
+export function SaveRecording(arg1:string):Promise<app.RecordingResult>;
+
+export function SetAudioInputDevice(arg1:string):Promise<app.DeviceResult>;
+
+export function StartAudioRecording():Promise<app.RecordingResult>;
+
+export function StopAudioRecording():Promise<app.RecordingResult>;
