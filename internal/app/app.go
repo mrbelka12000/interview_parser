@@ -681,6 +681,182 @@ func (a *App) SaveAndProcessRecording(filename string) (*TranscriptionResult, er
 	return a.ProcessFileForTranscription(saveResult.FilePath, false)
 }
 
+// CallAnalysisResult represents the result of call analysis
+type CallAnalysisResult struct {
+	Success      bool   `json:"success"`
+	Message      string `json:"message"`
+	AnalysisPath string `json:"analysisPath,omitempty"`
+}
+
+// SaveAndProcessRecordingForCall saves the recording and analyzes it as a call
+func (a *App) SaveAndProcessRecordingForCall(filename string) (*CallAnalysisResult, error) {
+	// First save the recording
+	saveResult, err := a.SaveRecording(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	if !saveResult.Success {
+		return &CallAnalysisResult{
+			Success: false,
+			Message: saveResult.Message,
+		}, nil
+	}
+
+	// Then process the saved file for call analysis
+	return a.ProcessFileForCallAnalysis(saveResult.FilePath, false)
+}
+
+// ProcessFileForCallAnalysis processes file for call analysis
+func (a *App) ProcessFileForCallAnalysis(filePath string, loadChunks bool) (*CallAnalysisResult, error) {
+	fmt.Printf("Processing file for call analysis %s\n", filePath)
+
+	// Check if file exists
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return &CallAnalysisResult{
+			Success: false,
+			Message: fmt.Sprintf("file does not exist: %s", filePath),
+		}, nil
+	}
+
+	apiKey, err := internal.GetOpenAIAPIKeyFromDB(a.cfg)
+	if err != nil || apiKey == "" {
+		return &CallAnalysisResult{
+			Success: false,
+			Message: "No API Key provided",
+		}, nil
+	}
+
+	// Create a copy of config with updated paths for this specific file
+	cfg := *a.cfg
+	cfg.LoadChunks = loadChunks
+	cfg.OpenAIAPIKey = apiKey
+
+	dir, err := os.ReadDir(cfg.DefaultDir)
+	if err != nil {
+		return &CallAnalysisResult{
+			Success: false,
+			Message: fmt.Sprintf("failed to read working dir: %s", err),
+		}, nil
+	}
+
+	// Generate unique output paths for this analysis
+	baseName := strings.TrimSuffix(filepath.Base(filePath), filepath.Ext(filePath))
+	analysisCallPath := filepath.Join(cfg.DefaultAnalyzeCallDir, fmt.Sprintf("%s_call_analysis_%v.md", baseName, len(dir)))
+
+	// Send initial progress
+	a.sendProgress(5, "Loading file...", "Reading audio/video file...")
+
+	// Step 1: Split into chunks or load existing chunks
+	var chunks []string
+	if cfg.LoadChunks {
+		a.sendProgress(15, "Loading chunks...", "Loading existing chunk files...")
+		chunks, err = a.parser.LoadChunks(&cfg)
+		if err != nil {
+			return &CallAnalysisResult{
+				Success: false,
+				Message: fmt.Sprintf("failed to load chunks: %s", err),
+			}, nil
+		}
+	} else {
+		a.sendProgress(15, "Splitting into chunks...", "Dividing file into manageable segments...")
+		chunks, err = a.parser.SplitIntoChunks(&cfg, filePath)
+		if err != nil {
+			return &CallAnalysisResult{
+				Success: false,
+				Message: fmt.Sprintf("failed to split into chunks: %s", err),
+			}, nil
+		}
+	}
+
+	if len(chunks) == 0 {
+		return &CallAnalysisResult{
+			Success: false,
+			Message: "no chunks to process",
+		}, nil
+	}
+
+	// Step 2: Transcribe chunks using the provided parser logic
+	a.sendProgress(25, "Transcribing audio...", "Converting speech to text using AI...")
+
+	var (
+		wg            sync.WaitGroup
+		mx            sync.Mutex
+		workers       = make(chan struct{}, cfg.ParallelWorkers)
+		collectedText = make([]string, len(chunks))
+		completed     = 0
+	)
+
+	for i, chunk := range chunks {
+		wg.Add(1)
+		workers <- struct{}{}
+		go func(ind int, chunkVar string) {
+			defer func() {
+				<-workers
+				wg.Done()
+			}()
+
+			textFromChunk, err := a.aiClient.Transcribe(a.ctx, chunkVar)
+			if err != nil {
+				log.Printf("Error transcribing chunk %d: %v", ind, err)
+				return
+			}
+
+			mx.Lock()
+			collectedText[ind] = textFromChunk
+			completed++
+			// Update progress based on completed chunks
+			progress := 25 + int(float64(completed)/float64(len(chunks))*35) // 25% to 60%
+			a.sendProgress(progress, "Processing chunks...", fmt.Sprintf("Processed %d/%d audio segments...", completed, len(chunks)))
+			mx.Unlock()
+
+		}(i, chunk)
+	}
+
+	wg.Wait()
+
+	if errors.Is(a.ctx.Err(), context.Canceled) {
+		log.Println("[i] cancelled by signal, skip analyze")
+		return &CallAnalysisResult{
+			Success: false,
+			Message: "processing was cancelled",
+		}, nil
+	}
+
+	// Step 3: Join and format transcript
+	a.sendProgress(65, "Formatting transcript...", "Organizing and formatting text...")
+	transcript := strings.Join(collectedText, "")
+	transcript = a.parser.FormatText(transcript)
+
+	// Step 4: Analyze transcript as call
+	a.sendProgress(75, "Analyzing call...", "Analyzing meeting content...")
+	analyzeResp, err := a.aiClient.AnalyzeCall(a.ctx, transcript)
+	if err != nil {
+		return &CallAnalysisResult{
+			Success: false,
+			Message: fmt.Sprintf("failed to analyze call: %s", err),
+		}, nil
+	}
+
+	// Step 5: Save analysis response
+	a.sendProgress(90, "Saving analysis...", "Writing analysis file...")
+	if err = a.parser.SaveCallAnalysis(analysisCallPath, analyzeResp.AnalysisText); err != nil {
+		return &CallAnalysisResult{
+			Success: false,
+			Message: fmt.Sprintf("failed to save analysis: %s", err),
+		}, nil
+	}
+
+	// Final progress
+	a.sendProgress(100, "Complete!", "Call analysis finished successfully!")
+
+	return &CallAnalysisResult{
+		Success:      true,
+		Message:      "File processed successfully",
+		AnalysisPath: analysisCallPath,
+	}, nil
+}
+
 // GetRecordingStatus returns the current recording status
 func (a *App) GetRecordingStatus() (*RecordingResult, error) {
 	if a.audioRecorder == nil {
@@ -731,7 +907,6 @@ func (a *App) GetInputDevices() (*DeviceResult, error) {
 		Devices: devices,
 	}, nil
 }
-
 
 // SetAudioInputDevice sets the audio input device for recording
 func (a *App) SetAudioInputDevice(deviceID string) (*DeviceResult, error) {

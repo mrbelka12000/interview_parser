@@ -18,6 +18,22 @@ export namespace app {
 	        this.lastUpdated = source["lastUpdated"];
 	    }
 	}
+	export class CallAnalysisResult {
+	    success: boolean;
+	    message: string;
+	    analysisPath?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CallAnalysisResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.message = source["message"];
+	        this.analysisPath = source["analysisPath"];
+	    }
+	}
 	export class DeviceResult {
 	    success: boolean;
 	    message?: string;

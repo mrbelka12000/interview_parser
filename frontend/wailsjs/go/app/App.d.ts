@@ -20,11 +20,15 @@ export function PickFile():Promise<string>;
 
 export function ProcessFile(arg1:string):Promise<app.FileInfo>;
 
+export function ProcessFileForCallAnalysis(arg1:string,arg2:boolean):Promise<app.CallAnalysisResult>;
+
 export function ProcessFileForTranscription(arg1:string,arg2:boolean):Promise<app.TranscriptionResult>;
 
 export function ReadFileContent(arg1:string):Promise<app.FileContent>;
 
 export function SaveAndProcessRecording(arg1:string):Promise<app.TranscriptionResult>;
+
+export function SaveAndProcessRecordingForCall(arg1:string):Promise<app.CallAnalysisResult>;
 
 export function SaveOpenAIAPIKey(arg1:string):Promise<app.APIKeyResult>;
 

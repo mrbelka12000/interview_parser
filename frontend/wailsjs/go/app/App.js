@@ -38,6 +38,10 @@ export function ProcessFile(arg1) {
   return window['go']['app']['App']['ProcessFile'](arg1);
 }
 
+export function ProcessFileForCallAnalysis(arg1, arg2) {
+  return window['go']['app']['App']['ProcessFileForCallAnalysis'](arg1, arg2);
+}
+
 export function ProcessFileForTranscription(arg1, arg2) {
   return window['go']['app']['App']['ProcessFileForTranscription'](arg1, arg2);
 }
@@ -48,6 +52,10 @@ export function ReadFileContent(arg1) {
 
 export function SaveAndProcessRecording(arg1) {
   return window['go']['app']['App']['SaveAndProcessRecording'](arg1);
+}
+
+export function SaveAndProcessRecordingForCall(arg1) {
+  return window['go']['app']['App']['SaveAndProcessRecordingForCall'](arg1);
 }
 
 export function SaveOpenAIAPIKey(arg1) {

@@ -21,6 +21,7 @@ type Config struct {
 	DefaultTranscriptDir      string
 	DefaultAnalyzeDir         string
 	DefaultOutputName         string
+	DefaultAnalyzeCallDir     string
 
 	AudioSampleRate uint32
 	AudioChannels   uint32
@@ -31,6 +32,7 @@ const (
 	defaultDirName                   = ".interview_parser"
 	defaultTranscriptDir             = "transcripts"
 	defaultAnalyzeDir                = "analyzes"
+	defaultAnalyzeCallDir            = "calls"
 	defaultChunksDir                 = "output/chunks"
 	defaultChunksSeconds             = 100
 	defaultOutputName                = "analytics.md"
@@ -76,6 +78,7 @@ func ParseConfig() *Config {
 	cfg.DefaultDir = defaultDir
 	cfg.DefaultTranscriptDir = filepath.Join(defaultDir, defaultTranscriptDir)
 	cfg.DefaultAnalyzeDir = filepath.Join(defaultDir, defaultAnalyzeDir)
+	cfg.DefaultAnalyzeCallDir = filepath.Join(defaultDir, defaultAnalyzeCallDir)
 
 	if err := os.Mkdir(cfg.DefaultTranscriptDir, os.ModePerm); err != nil {
 		if !os.IsExist(err) {
@@ -85,6 +88,11 @@ func ParseConfig() *Config {
 	if err := os.Mkdir(cfg.DefaultAnalyzeDir, os.ModePerm); err != nil {
 		if !os.IsExist(err) {
 			fmt.Printf("Failed to create default analyze directory: %s\n", err)
+		}
+	}
+	if err := os.Mkdir(cfg.DefaultAnalyzeCallDir, os.ModePerm); err != nil {
+		if !os.IsExist(err) {
+			fmt.Printf("Failed to create default analyze calls directory: %s\n", err)
 		}
 	}
 

@@ -4,7 +4,7 @@
       <h2>🎙️ Real-time Audio Recording</h2>
       <p class="description">
         Record audio directly from your microphone and process it for transcription and analysis.
-        Click the record button to start capturing your interview.
+        Choose between interview analysis or call/meeting analysis modes.
       </p>
 
       <!-- Recording Controls -->
@@ -86,12 +86,31 @@
       <!-- Recording Options -->
       <div class="recording-options">
         <div class="option-group">
+          <label for="mode-select">Processing Mode:</label>
+          <select
+            id="mode-select"
+            v-model="processingMode"
+            :disabled="isRecording || isStopping || isProcessing"
+            class="mode-select"
+          >
+            <option value="interview">👥 Interview Analysis</option>
+            <option value="call">📞 Call/Meeting Analysis</option>
+          </select>
+          <small v-if="processingMode === 'call'">
+            Call mode analyzes daily meetings and creates actionable plans with tasks, open questions, and next steps.
+          </small>
+          <small v-else>
+            Interview mode extracts questions and evaluates candidate responses.
+          </small>
+        </div>
+
+        <div class="option-group">
           <label for="filename-input">Filename (optional):</label>
           <input
             id="filename-input"
             v-model="customFilename"
             type="text"
-            placeholder="interview_recording"
+            :placeholder="processingMode === 'call' ? 'meeting_recording' : 'interview_recording'"
             :disabled="isRecording || isStopping || isProcessing"
             class="filename-input"
           />
@@ -169,7 +188,7 @@
         <div v-if="transcriptionResult.success" class="output-files">
           <h4>✅ Generated Files:</h4>
           <div class="file-links">
-            <div class="file-link">
+            <div v-if="processingMode === 'interview_recording'" class="file-link">
               <strong>📝 Transcript:</strong>
               <a href="#" @click.prevent="openFile(transcriptionResult.transcriptPath)">
                 {{ getFileName(transcriptionResult.transcriptPath) }}
@@ -183,7 +202,8 @@
             </div>
           </div>
           <div class="completion-notice">
-            <p>🎉 Your interview has been successfully transcribed and analyzed!</p>
+            <p v-if="processingMode === 'call'">🎉 Your meeting has been successfully transcribed and analyzed!</p>
+            <p v-else>🎉 Your interview has been successfully transcribed and analyzed!</p>
           </div>
         </div>
       </div>
@@ -209,6 +229,7 @@ import {
   StopAudioRecording,
   SaveRecording,
   SaveAndProcessRecording,
+  SaveAndProcessRecordingForCall,
   GetRecordingStatus,
   GetInputDevices,
   SetAudioInputDevice,
@@ -221,6 +242,7 @@ const isStopping = ref(false)
 const isProcessing = ref(false)
 const customFilename = ref('')
 const autoProcess = ref(true)
+const processingMode = ref('interview')
 const recordingResult = ref(null)
 const transcriptionResult = ref(null)
 const recordingStatus = ref({ duration: 0, dataSize: 0 })
@@ -382,7 +404,13 @@ const saveAndProcess = async () => {
   progressDetails.value = 'Preparing to process your recording...'
 
   try {
-    const result = await SaveAndProcessRecording(customFilename.value)
+    let result
+    if (processingMode.value === 'call') {
+      result = await SaveAndProcessRecordingForCall(customFilename.value)
+    } else {
+      result = await SaveAndProcessRecording(customFilename.value)
+    }
+    
     transcriptionResult.value = result
 
     if (result.success) {
@@ -1218,4 +1246,10 @@ h2 {
     margin: 10px;
   }
 }
+.audio-recorder {
+   max-width: 800px;
+   margin: 0 auto;
+   padding: 20px;
+   color: #000; /* << make all text inside black */
+ }
 </style>
