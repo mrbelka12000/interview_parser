@@ -188,7 +188,7 @@
         <div v-if="transcriptionResult.success" class="output-files">
           <h4>✅ Generated Files:</h4>
           <div class="file-links">
-            <div v-if="processingMode === 'interview_recording'" class="file-link">
+            <div v-if="processingMode === 'interview'" class="file-link">
               <strong>📝 Transcript:</strong>
               <a href="#" @click.prevent="openFile(transcriptionResult.transcriptPath)">
                 {{ getFileName(transcriptionResult.transcriptPath) }}

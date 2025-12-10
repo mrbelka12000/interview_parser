@@ -1,0 +1,105 @@
+package app
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/mrbelka12000/interview_parser/internal"
+)
+
+// TranscriptionResult represents the result of transcription and analysis
+type TranscriptionResult struct {
+	Success        bool   `json:"success"`
+	Message        string `json:"message"`
+	TranscriptPath string `json:"transcriptPath,omitempty"`
+	AnalysisPath   string `json:"analysisPath,omitempty"`
+}
+
+// SaveAndProcessRecording saves the recording and immediately processes it for transcription
+func (a *App) SaveAndProcessRecording(filename string) (*TranscriptionResult, error) {
+	// First save the recording
+	saveResult, err := a.SaveRecording(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	if !saveResult.Success {
+		return &TranscriptionResult{
+			Success: false,
+			Message: saveResult.Message,
+		}, nil
+	}
+
+	// Then process the saved file for transcription
+	return a.ProcessFileForTranscription(saveResult.FilePath)
+}
+
+// ProcessFileForTranscription handles file upload and processing using the parser logic
+func (a *App) ProcessFileForTranscription(filePath string) (*TranscriptionResult, error) {
+	fmt.Printf("Processing file %s\n", filePath)
+	// Check if file exists
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return &TranscriptionResult{
+			Success: false,
+			Message: fmt.Sprintf("file does not exist: %s", filePath),
+		}, nil
+	}
+
+	apiKey, err := internal.GetOpenAIAPIKeyFromDB(a.cfg)
+	if err != nil || apiKey == "" {
+		return &TranscriptionResult{
+			Success: false,
+			Message: "No API Key provided",
+		}, nil
+	}
+
+	dir, err := os.ReadDir(a.cfg.DefaultDir)
+	if err != nil {
+		return &TranscriptionResult{
+			Success: false,
+			Message: fmt.Sprintf("failed to read working dir: %s", err),
+		}, nil
+	}
+
+	// Generate unique output paths for this transcription
+	baseName := strings.TrimSuffix(filepath.Base(filePath), filepath.Ext(filePath))
+	transcriptPath := filepath.Join(a.cfg.DefaultTranscriptDir, fmt.Sprintf("%s_transcript_%v.txt", baseName, len(dir)))
+	analyzePath := filepath.Join(a.cfg.DefaultAnalyzeDir, fmt.Sprintf("%s_analysis_%v.md", baseName, len(dir)))
+
+	transcript, err := a.transcribeFile(filePath)
+	if err != nil {
+		return &TranscriptionResult{
+			Message: err.Error(),
+		}, nil
+	}
+
+	transcript = a.parser.FormatText(transcript)
+
+	// Step 4: Save transcript
+	a.sendProgress(75, "Saving transcript...", "Writing transcript file...")
+	if err = a.parser.SaveTranscript(transcriptPath, transcript); err != nil {
+		return &TranscriptionResult{
+			Success: false,
+			Message: fmt.Sprintf("failed to save transcript: %s", err),
+		}, nil
+	}
+
+	err = a.analyzeInterview(analyzePath, transcript)
+	if err != nil {
+		return &TranscriptionResult{
+			Message: err.Error(),
+		}, nil
+	}
+
+	// Final progress
+	a.sendProgress(100, "Complete!", "Processing finished successfully!")
+
+	return &TranscriptionResult{
+		Success:        true,
+		Message:        "File processed successfully",
+		TranscriptPath: transcriptPath,
+		AnalysisPath:   analyzePath,
+	}, nil
+}

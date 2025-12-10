@@ -38,12 +38,12 @@ export function ProcessFile(arg1) {
   return window['go']['app']['App']['ProcessFile'](arg1);
 }
 
-export function ProcessFileForCallAnalysis(arg1, arg2) {
-  return window['go']['app']['App']['ProcessFileForCallAnalysis'](arg1, arg2);
+export function ProcessFileForCallAnalysis(arg1) {
+  return window['go']['app']['App']['ProcessFileForCallAnalysis'](arg1);
 }
 
-export function ProcessFileForTranscription(arg1, arg2) {
-  return window['go']['app']['App']['ProcessFileForTranscription'](arg1, arg2);
+export function ProcessFileForTranscription(arg1) {
+  return window['go']['app']['App']['ProcessFileForTranscription'](arg1);
 }
 
 export function ReadFileContent(arg1) {
