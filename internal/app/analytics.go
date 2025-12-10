@@ -11,48 +11,48 @@ import (
 
 // InterviewAnalytics represents analytics data for a single interview
 type InterviewAnalytics struct {
-	ID                     int       `json:"id"`
-	InterviewPath          string    `json:"interviewPath"`
-	AnalysisPath           string    `json:"analysisPath"`
-	TotalQuestions         int       `json:"totalQuestions"`
-	AnsweredQuestions      int       `json:"answeredQuestions"`
-	UnansweredQuestions    int       `json:"unansweredQuestions"`
-	AnsweredPercentage     float64   `json:"answeredPercentage"`
-	UnansweredPercentage   float64   `json:"unansweredPercentage"`
-	AverageAccuracy        float64   `json:"averageAccuracy"`
-	AverageAnsweredAccuracy float64  `json:"averageAnsweredAccuracy"`
-	HighConfidenceQuestions int      `json:"highConfidenceQuestions"` // accuracy > 0.8
-	MediumConfidenceQuestions int    `json:"mediumConfidenceQuestions"` // accuracy 0.5-0.8
-	LowConfidenceQuestions  int     `json:"lowConfidenceQuestions"` // accuracy < 0.5
-	QuestionsWithReason    int       `json:"questionsWithReason"`
-	CreatedAt              time.Time `json:"createdAt"`
-	UpdatedAt              time.Time `json:"updatedAt"`
+	ID                        int       `json:"id"`
+	InterviewPath             string    `json:"interviewPath"`
+	AnalysisPath              string    `json:"analysisPath"`
+	TotalQuestions            int       `json:"totalQuestions"`
+	AnsweredQuestions         int       `json:"answeredQuestions"`
+	UnansweredQuestions       int       `json:"unansweredQuestions"`
+	AnsweredPercentage        float64   `json:"answeredPercentage"`
+	UnansweredPercentage      float64   `json:"unansweredPercentage"`
+	AverageAccuracy           float64   `json:"averageAccuracy"`
+	AverageAnsweredAccuracy   float64   `json:"averageAnsweredAccuracy"`
+	HighConfidenceQuestions   int       `json:"highConfidenceQuestions"`   // accuracy > 0.8
+	MediumConfidenceQuestions int       `json:"mediumConfidenceQuestions"` // accuracy 0.5-0.8
+	LowConfidenceQuestions    int       `json:"lowConfidenceQuestions"`    // accuracy < 0.5
+	QuestionsWithReason       int       `json:"questionsWithReason"`
+	CreatedAt                 time.Time `json:"createdAt"`
+	UpdatedAt                 time.Time `json:"updatedAt"`
 }
 
 // GlobalAnalytics represents aggregated statistics across all interviews
 type GlobalAnalytics struct {
-	TotalInterviews        int     `json:"totalInterviews"`
-	TotalQuestions         int     `json:"totalQuestions"`
-	TotalAnswered          int     `json:"totalAnswered"`
-	TotalUnanswered        int     `json:"totalUnanswered"`
-	GlobalAnsweredPercent  float64 `json:"globalAnsweredPercent"`
-	GlobalAverageAccuracy  float64 `json:"globalAverageAccuracy"`
-	GlobalAnsweredAccuracy float64 `json:"globalAnsweredAccuracy"`
-	BestInterviewID        int     `json:"bestInterviewID"`
-	BestInterviewPath      string  `json:"bestInterviewPath"`
-	BestInterviewScore     float64 `json:"bestInterviewScore"`
-	WorstInterviewID       int     `json:"worstInterviewID"`
-	WorstInterviewPath     string  `json:"worstInterviewPath"`
-	WorstInterviewScore    float64 `json:"worstInterviewScore"`
+	TotalInterviews        int       `json:"totalInterviews"`
+	TotalQuestions         int       `json:"totalQuestions"`
+	TotalAnswered          int       `json:"totalAnswered"`
+	TotalUnanswered        int       `json:"totalUnanswered"`
+	GlobalAnsweredPercent  float64   `json:"globalAnsweredPercent"`
+	GlobalAverageAccuracy  float64   `json:"globalAverageAccuracy"`
+	GlobalAnsweredAccuracy float64   `json:"globalAnsweredAccuracy"`
+	BestInterviewID        int       `json:"bestInterviewID"`
+	BestInterviewPath      string    `json:"bestInterviewPath"`
+	BestInterviewScore     float64   `json:"bestInterviewScore"`
+	WorstInterviewID       int       `json:"worstInterviewID"`
+	WorstInterviewPath     string    `json:"worstInterviewPath"`
+	WorstInterviewScore    float64   `json:"worstInterviewScore"`
 	LastUpdated            time.Time `json:"lastUpdated"`
 }
 
 // AnalyticsFilters represents filters for querying analytics
 type AnalyticsFilters struct {
-	DateFrom     *time.Time `json:"dateFrom,omitempty"`
-	DateTo       *time.Time `json:"dateTo,omitempty"`
-	MinAccuracy  *float64   `json:"minAccuracy,omitempty"`
-	MaxAccuracy  *float64   `json:"maxAccuracy,omitempty"`
+	DateFrom    *time.Time `json:"dateFrom,omitempty"`
+	DateTo      *time.Time `json:"dateTo,omitempty"`
+	MinAccuracy *float64   `json:"minAccuracy,omitempty"`
+	MaxAccuracy *float64   `json:"maxAccuracy,omitempty"`
 }
 
 // CalculateAnalytics computes analytics from an AnalyzeResponse
@@ -73,11 +73,11 @@ func (a *App) CalculateAnalytics(analyzeResp client.AnalyzeResponse, interviewPa
 
 	for _, q := range analyzeResp.Questions {
 		totalAccuracy += q.Accuracy
-		
+
 		if q.FullAnswer != "" && q.Accuracy > 0 {
 			answered++
 			answeredAccuracy += q.Accuracy
-			
+
 			if q.Accuracy > 0.8 {
 				highConf++
 			} else if q.Accuracy >= 0.5 {
@@ -88,7 +88,7 @@ func (a *App) CalculateAnalytics(analyzeResp client.AnalyzeResponse, interviewPa
 		} else {
 			unanswered++
 		}
-		
+
 		if q.ReasonUnanswered != "" {
 			withReason++
 		}
@@ -103,21 +103,21 @@ func (a *App) CalculateAnalytics(analyzeResp client.AnalyzeResponse, interviewPa
 	}
 
 	return &InterviewAnalytics{
-		InterviewPath:            interviewPath,
-		AnalysisPath:             analysisPath,
-		TotalQuestions:           totalQuestions,
-		AnsweredQuestions:        answered,
-		UnansweredQuestions:      unanswered,
-		AnsweredPercentage:       answeredPercentage,
-		UnansweredPercentage:     unansweredPercentage,
-		AverageAccuracy:          avgAccuracy,
-		AverageAnsweredAccuracy:  avgAnsweredAccuracy,
-		HighConfidenceQuestions:  highConf,
+		InterviewPath:             interviewPath,
+		AnalysisPath:              analysisPath,
+		TotalQuestions:            totalQuestions,
+		AnsweredQuestions:         answered,
+		UnansweredQuestions:       unanswered,
+		AnsweredPercentage:        answeredPercentage,
+		UnansweredPercentage:      unansweredPercentage,
+		AverageAccuracy:           avgAccuracy,
+		AverageAnsweredAccuracy:   avgAnsweredAccuracy,
+		HighConfidenceQuestions:   highConf,
 		MediumConfidenceQuestions: mediumConf,
-		LowConfidenceQuestions:   lowConf,
-		QuestionsWithReason:      withReason,
-		CreatedAt:                time.Now(),
-		UpdatedAt:                time.Now(),
+		LowConfidenceQuestions:    lowConf,
+		QuestionsWithReason:       withReason,
+		CreatedAt:                 time.Now(),
+		UpdatedAt:                 time.Now(),
 	}, nil
 }
 
@@ -238,7 +238,7 @@ func (a *App) GetAllInterviewAnalytics(filters *AnalyticsFilters) ([]InterviewAn
 	}
 	defer rows.Close()
 
-	var analyticsList []InterviewAnalytics
+	analyticsList := []InterviewAnalytics{}
 	for rows.Next() {
 		var analytics InterviewAnalytics
 		err := rows.Scan(
@@ -288,7 +288,7 @@ func (a *App) GetGlobalAnalytics(filters *AnalyticsFilters) (*GlobalAnalytics, e
 
 		// Calculate a composite score (answered percentage + average accuracy)
 		compositeScore := analytics.AnsweredPercentage + analytics.AverageAccuracy*100
-		
+
 		if i == 0 || compositeScore > bestScore {
 			bestScore = compositeScore
 			bestIdx = i
@@ -306,11 +306,11 @@ func (a *App) GetGlobalAnalytics(filters *AnalyticsFilters) (*GlobalAnalytics, e
 	if len(analyticsList) > 0 {
 		best := analyticsList[bestIdx]
 		worst := analyticsList[worstIdx]
-		
+
 		global.BestInterviewID = best.ID
 		global.BestInterviewPath = best.InterviewPath
 		global.BestInterviewScore = bestScore
-		
+
 		global.WorstInterviewID = worst.ID
 		global.WorstInterviewPath = worst.InterviewPath
 		global.WorstInterviewScore = worstScore
