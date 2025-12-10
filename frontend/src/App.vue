@@ -5,6 +5,7 @@ import FileContent from './components/FileContent.vue'
 import FileUpload from './components/FileUpload.vue'
 import ApiKeyManager from './components/ApiKeyManager.vue'
 import AudioRecorder from './components/AudioRecorder.vue'
+import Analytics from './components/Analytics.vue'
 import { ref } from 'vue'
 
 const currentView = ref('explorer')
@@ -16,6 +17,11 @@ const switchView = (view) => {
 
 const showFileContent = (filePath) => {
   selectedFilePath.value = filePath
+  currentView.value = 'fileContent'
+}
+
+const navigateToDirectory = (directoryPath) => {
+  selectedFilePath.value = directoryPath
   currentView.value = 'fileContent'
 }
 
@@ -59,7 +65,14 @@ const backToFileExplorer = () => {
           🔑 API Key
         </button>
         <button 
-          @click="switchView('greet')" 
+          @click="switchView('analytics')"
+          :class="{ active: currentView === 'analytics' }"
+          class="nav-tab"
+        >
+          📊 Analytics
+        </button>
+        <button
+          @click="switchView('greet')"
           :class="{ active: currentView === 'greet' }"
           class="nav-tab"
         >
@@ -95,7 +108,9 @@ const backToFileExplorer = () => {
         v-else-if="currentView === 'fileContent'" 
         :file-path="selectedFilePath" 
         @back="backToFileExplorer" 
+        @navigate-to="navigateToDirectory"
       />
+      <Analytics v-else-if="currentView === 'analytics'" />
       <HelloWorld v-else-if="currentView === 'greet'" />
     </main>
   </div>

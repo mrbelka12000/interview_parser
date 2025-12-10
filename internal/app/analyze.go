@@ -8,7 +8,7 @@ import (
 	"github.com/mrbelka12000/interview_parser/internal/client"
 )
 
-func (a *App) analyzeInterview(analyzePath, transcript string) error {
+func (a *App) analyzeInterview(analyzePath, transcriptPath, transcript string) error {
 	a.sendProgress(78, "Starting analyzing...", "Analyzing transcripts...")
 	var (
 		wg        sync.WaitGroup
@@ -58,6 +58,17 @@ func (a *App) analyzeInterview(analyzePath, transcript string) error {
 	a.sendProgress(97, "Saving analysis...", "Writing analysis file...")
 	if err := a.parser.SaveAnalyzeResponse(analyzePath, analyzeResp); err != nil {
 		return fmt.Errorf("failed to save analysis: %w", err)
+	}
+
+	// Step 7: Calculate and save analytics
+	a.sendProgress(98, "Calculating analytics...", "Computing interview analytics...")
+	analytics, err := a.CalculateAnalytics(analyzeResp, transcriptPath, analyzePath)
+	if err != nil {
+		return fmt.Errorf("failed to calculate analytics: %w", err)
+	}
+
+	if err := a.SaveAnalytics(analytics); err != nil {
+		return fmt.Errorf("failed to save analytics: %w", err)
 	}
 
 	return nil

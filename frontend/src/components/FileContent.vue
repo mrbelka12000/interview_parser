@@ -19,7 +19,7 @@ const error = ref('')
 const fileIcons = {
   // Directories
   dir: '📁',
-  
+
   // Code files
   '.js': '🟨',
   '.ts': '🔷',
@@ -32,7 +32,7 @@ const fileIcons = {
   '.xml': '📋',
   '.yaml': '📋',
   '.yml': '📋',
-  
+
   // Documents
   '.pdf': '📕',
   '.doc': '📘',
@@ -40,7 +40,7 @@ const fileIcons = {
   '.txt': '📄',
   '.md': '📝',
   '.rtf': '📄',
-  
+
   // Images
   '.jpg': '🖼️',
   '.jpeg': '🖼️',
@@ -49,7 +49,7 @@ const fileIcons = {
   '.svg': '🎨',
   '.ico': '🖼️',
   '.bmp': '🖼️',
-  
+
   // Video
   '.mp4': '🎬',
   '.avi': '🎬',
@@ -57,21 +57,21 @@ const fileIcons = {
   '.wmv': '🎬',
   '.flv': '🎬',
   '.mkv': '🎬',
-  
+
   // Audio
   '.mp3': '🎵',
   '.wav': '🎵',
   '.flac': '🎵',
   '.aac': '🎵',
   '.ogg': '🎵',
-  
+
   // Archives
   '.zip': '📦',
   '.rar': '📦',
   '.tar': '📦',
   '.gz': '📦',
   '.7z': '📦',
-  
+
   // Default
   'file': '📄'
 }
@@ -138,11 +138,11 @@ const getSyntaxClass = (extension) => {
 const loadFileContent = async () => {
   loading.value = true
   error.value = ''
-  
+
   try {
     const result = await ReadFileContent(props.filePath)
     fileContent.value = result
-    
+
     if (result.error) {
       error.value = result.error
     }
@@ -171,7 +171,7 @@ onMounted(() => {
       <button @click="goBack" class="back-btn">
         ← Back to Files
       </button>
-      
+
       <div v-if="fileContent && !fileContent.error" class="file-info">
         <span class="large-icon">{{ getFileIcon(fileContent) }}</span>
         <div>
@@ -183,14 +183,14 @@ onMounted(() => {
         </div>
       </div>
     </div>
-    
+
     <div class="content">
       <!-- Loading state -->
       <div v-if="loading" class="loading">
         <div class="loading-spinner"></div>
         <p>Loading file content...</p>
       </div>
-      
+
       <!-- Error state -->
       <div v-else-if="error" class="error">
         <div class="error-icon">❌</div>
@@ -198,7 +198,7 @@ onMounted(() => {
         <p>{{ error }}</p>
         <button @click="loadFileContent" class="retry-btn">Retry</button>
       </div>
-      
+
       <!-- File content display -->
       <div v-else-if="fileContent" class="content-display">
         <!-- Binary file warning -->
@@ -208,7 +208,7 @@ onMounted(() => {
           <p>This file contains binary data and cannot be displayed as text.</p>
           <p>File size: {{ formatFileSize(fileContent.size) }}</p>
         </div>
-        
+
         <!-- Text content -->
         <div v-else class="text-content">
           <div class="content-header">
@@ -217,7 +217,7 @@ onMounted(() => {
               {{ fileContent.content.split('\n').length }} lines
             </span>
           </div>
-          
+
           <div class="code-container">
             <pre><code :class="getSyntaxClass(fileContent.extension)">{{ fileContent.content }}</code></pre>
           </div>
@@ -441,34 +441,33 @@ onMounted(() => {
   .file-content {
     padding: 15px;
   }
-  
+
   .header {
     flex-direction: column;
     align-items: flex-start;
     gap: 15px;
   }
-  
+
   .file-info {
     align-items: flex-start;
   }
-  
+
   .large-icon {
     font-size: 36px;
   }
-  
+
   .file-info h2 {
     font-size: 20px;
   }
-  
+
   .code-container {
     max-height: 400px;
   }
-  
+
   .code-container pre {
     padding: 15px;
     font-size: 12px;
   }
 }
 </style>
-
 

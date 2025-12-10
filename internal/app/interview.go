@@ -86,7 +86,7 @@ func (a *App) ProcessFileForTranscription(filePath string) (*TranscriptionResult
 		}, nil
 	}
 
-	err = a.analyzeInterview(analyzePath, transcript)
+	err = a.analyzeInterview(analyzePath, transcriptPath, transcript)
 	if err != nil {
 		return &TranscriptionResult{
 			Message: err.Error(),

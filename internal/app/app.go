@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -76,4 +77,63 @@ func (a *App) sendProgress(percentage int, stage, details string) {
 
 	// Send event to frontend
 	runtime.EventsEmit(a.ctx, "progress", report)
+}
+
+// GetInterviewAnalyticsAPI retrieves analytics for a specific interview
+func (a *App) GetInterviewAnalyticsAPI(interviewPath string) (*InterviewAnalytics, error) {
+	return a.GetInterviewAnalytics(interviewPath)
+}
+
+// GetAllInterviewAnalyticsAPI retrieves all interview analytics with optional filters
+func (a *App) GetAllInterviewAnalyticsAPI(dateFrom, dateTo string, minAccuracy, maxAccuracy float64) ([]InterviewAnalytics, error) {
+	filters := &AnalyticsFilters{}
+	
+	if dateFrom != "" {
+		if parsed, err := time.Parse("2006-01-02", dateFrom); err == nil {
+			filters.DateFrom = &parsed
+		}
+	}
+	
+	if dateTo != "" {
+		if parsed, err := time.Parse("2006-01-02", dateTo); err == nil {
+			filters.DateTo = &parsed
+		}
+	}
+	
+	if minAccuracy > 0 {
+		filters.MinAccuracy = &minAccuracy
+	}
+	
+	if maxAccuracy > 0 {
+		filters.MaxAccuracy = &maxAccuracy
+	}
+	
+	return a.GetAllInterviewAnalytics(filters)
+}
+
+// GetGlobalAnalyticsAPI calculates aggregated statistics across all interviews
+func (a *App) GetGlobalAnalyticsAPI(dateFrom, dateTo string, minAccuracy, maxAccuracy float64) (*GlobalAnalytics, error) {
+	filters := &AnalyticsFilters{}
+	
+	if dateFrom != "" {
+		if parsed, err := time.Parse("2006-01-02", dateFrom); err == nil {
+			filters.DateFrom = &parsed
+		}
+	}
+	
+	if dateTo != "" {
+		if parsed, err := time.Parse("2006-01-02", dateTo); err == nil {
+			filters.DateTo = &parsed
+		}
+	}
+	
+	if minAccuracy > 0 {
+		filters.MinAccuracy = &minAccuracy
+	}
+	
+	if maxAccuracy > 0 {
+		filters.MaxAccuracy = &maxAccuracy
+	}
+	
+	return a.GetGlobalAnalytics(filters)
 }

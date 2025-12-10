@@ -18,6 +18,44 @@ export namespace app {
 	        this.lastUpdated = source["lastUpdated"];
 	    }
 	}
+	export class AnalyticsFilters {
+	    // Go type: time
+	    dateFrom?: any;
+	    // Go type: time
+	    dateTo?: any;
+	    minAccuracy?: number;
+	    maxAccuracy?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new AnalyticsFilters(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.dateFrom = this.convertValues(source["dateFrom"], null);
+	        this.dateTo = this.convertValues(source["dateTo"], null);
+	        this.minAccuracy = source["minAccuracy"];
+	        this.maxAccuracy = source["maxAccuracy"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class CallAnalysisResult {
 	    success: boolean;
 	    message: string;
@@ -114,6 +152,125 @@ export namespace app {
 	        this.extension = source["extension"];
 	    }
 	}
+	export class GlobalAnalytics {
+	    totalInterviews: number;
+	    totalQuestions: number;
+	    totalAnswered: number;
+	    totalUnanswered: number;
+	    globalAnsweredPercent: number;
+	    globalAverageAccuracy: number;
+	    globalAnsweredAccuracy: number;
+	    bestInterviewID: number;
+	    bestInterviewPath: string;
+	    bestInterviewScore: number;
+	    worstInterviewID: number;
+	    worstInterviewPath: string;
+	    worstInterviewScore: number;
+	    // Go type: time
+	    lastUpdated: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new GlobalAnalytics(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.totalInterviews = source["totalInterviews"];
+	        this.totalQuestions = source["totalQuestions"];
+	        this.totalAnswered = source["totalAnswered"];
+	        this.totalUnanswered = source["totalUnanswered"];
+	        this.globalAnsweredPercent = source["globalAnsweredPercent"];
+	        this.globalAverageAccuracy = source["globalAverageAccuracy"];
+	        this.globalAnsweredAccuracy = source["globalAnsweredAccuracy"];
+	        this.bestInterviewID = source["bestInterviewID"];
+	        this.bestInterviewPath = source["bestInterviewPath"];
+	        this.bestInterviewScore = source["bestInterviewScore"];
+	        this.worstInterviewID = source["worstInterviewID"];
+	        this.worstInterviewPath = source["worstInterviewPath"];
+	        this.worstInterviewScore = source["worstInterviewScore"];
+	        this.lastUpdated = this.convertValues(source["lastUpdated"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class InterviewAnalytics {
+	    id: number;
+	    interviewPath: string;
+	    analysisPath: string;
+	    totalQuestions: number;
+	    answeredQuestions: number;
+	    unansweredQuestions: number;
+	    answeredPercentage: number;
+	    unansweredPercentage: number;
+	    averageAccuracy: number;
+	    averageAnsweredAccuracy: number;
+	    highConfidenceQuestions: number;
+	    mediumConfidenceQuestions: number;
+	    lowConfidenceQuestions: number;
+	    questionsWithReason: number;
+	    // Go type: time
+	    createdAt: any;
+	    // Go type: time
+	    updatedAt: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new InterviewAnalytics(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.interviewPath = source["interviewPath"];
+	        this.analysisPath = source["analysisPath"];
+	        this.totalQuestions = source["totalQuestions"];
+	        this.answeredQuestions = source["answeredQuestions"];
+	        this.unansweredQuestions = source["unansweredQuestions"];
+	        this.answeredPercentage = source["answeredPercentage"];
+	        this.unansweredPercentage = source["unansweredPercentage"];
+	        this.averageAccuracy = source["averageAccuracy"];
+	        this.averageAnsweredAccuracy = source["averageAnsweredAccuracy"];
+	        this.highConfidenceQuestions = source["highConfidenceQuestions"];
+	        this.mediumConfidenceQuestions = source["mediumConfidenceQuestions"];
+	        this.lowConfidenceQuestions = source["lowConfidenceQuestions"];
+	        this.questionsWithReason = source["questionsWithReason"];
+	        this.createdAt = this.convertValues(source["createdAt"], null);
+	        this.updatedAt = this.convertValues(source["updatedAt"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class RecordingResult {
 	    success: boolean;
 	    message: string;
@@ -176,6 +333,63 @@ export namespace audiocapture {
 	        this.isOutput = source["isOutput"];
 	        this.isDefault = source["isDefault"];
 	    }
+	}
+
+}
+
+export namespace client {
+	
+	export class Question {
+	    question: string;
+	    full_answer: string;
+	    accuracy: number;
+	    questioner: string;
+	    answerer: string;
+	    reason: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Question(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.question = source["question"];
+	        this.full_answer = source["full_answer"];
+	        this.accuracy = source["accuracy"];
+	        this.questioner = source["questioner"];
+	        this.answerer = source["answerer"];
+	        this.reason = source["reason"];
+	    }
+	}
+	export class AnalyzeResponse {
+	    questions: Question[];
+	
+	    static createFrom(source: any = {}) {
+	        return new AnalyzeResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.questions = this.convertValues(source["questions"], Question);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 
 }
