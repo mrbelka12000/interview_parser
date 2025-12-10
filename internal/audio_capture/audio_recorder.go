@@ -83,12 +83,10 @@ func (ar *AudioRecorder) StartRecording() error {
 	// Clear previous recording data
 	ar.capturedData = make([]byte, 0)
 
-	onRecvFrames := func(pSample2, pSample []byte, framecount uint32) {
-		ar.capturedData = append(ar.capturedData, pSample...)
-	}
-
 	callbacks := malgo.DeviceCallbacks{
-		Data: onRecvFrames,
+		Data: func(_, pSample []byte, _ uint32) {
+			ar.capturedData = append(ar.capturedData, pSample...)
+		},
 	}
 
 	device, err := malgo.InitDevice(ar.ctx.Context, ar.deviceConfig, callbacks)
@@ -191,40 +189,6 @@ func (ar *AudioRecorder) GetAudioInfo() map[string]interface{} {
 		"data_size":        len(ar.capturedData),
 		"duration_seconds": duration,
 	}
-}
-
-// SetInputDevice sets the audio input device by device ID
-func (ar *AudioRecorder) SetInputDevice(deviceID string) error {
-	if ar.isRecording {
-		return fmt.Errorf("cannot change device while recording")
-	}
-
-	// Parse device ID
-	ctx, err := malgo.InitContext(nil, malgo.ContextConfig{}, func(message string) {
-		fmt.Printf("LOG <%v>\n", message)
-	})
-	if err != nil {
-		return fmt.Errorf("failed to initialize context: %w", err)
-	}
-	defer ctx.Uninit()
-	defer ctx.Free()
-
-	// Get all capture devices to find the one with matching ID
-	captureInfos, err := ctx.Devices(malgo.Capture)
-	if err != nil {
-		return fmt.Errorf("failed to get capture devices: %w", err)
-	}
-
-	fmt.Printf("Found %d capture devices\n", len(captureInfos), deviceID)
-	for _, info := range captureInfos {
-		if info.ID.String() == deviceID {
-			// Update device config with the specific device
-			fmt.Printf("Input device set to: %s\n", info.Name())
-			return nil
-		}
-	}
-
-	return fmt.Errorf("device with ID %s not found", deviceID)
 }
 
 // applyVolume applies volume to audio samples
