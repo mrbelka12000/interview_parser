@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/gen2brain/malgo"
@@ -37,8 +39,19 @@ type AudioDevice struct {
 
 // AudioRecorder handles audio recording and saving
 type AudioRecorder struct {
-	ctx           *malgo.AllocatedContext
-	deviceConfig  malgo.DeviceConfig
+	defaultCtx      *malgo.AllocatedContext
+	blackHoleCtx    *malgo.AllocatedContext
+	defaultConfig   malgo.DeviceConfig
+	blackHoleConfig malgo.DeviceConfig
+
+	micDevice       *malgo.Device // NEW: mic capture device
+	blackHoleDevice *malgo.Device // NEW: output (BlackHole) capture device
+
+	micCh chan []byte // NEW: mic PCM chunks
+	bhCh  chan []byte // NEW: BlackHole PCM chunks
+
+	mx sync.Mutex
+
 	capturedData  []byte
 	isRecording   bool
 	volume        float32 // Volume multiplier (0.0 to 1.0)
@@ -49,32 +62,69 @@ type AudioRecorder struct {
 
 // NewAudioRecorder creates a new audio recorder instance
 func NewAudioRecorder(sampleRate uint32, channels uint32, bitsPerSample uint16) (*AudioRecorder, error) {
-	ctx, err := malgo.InitContext(nil, malgo.ContextConfig{}, func(message string) {
-		fmt.Printf("LOG <%v>\n", message)
+	defaultCtx, err := malgo.InitContext(nil, malgo.ContextConfig{}, func(message string) {
+		fmt.Printf("LOG <%v>\n", strings.TrimSuffix(message, "\n"))
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize context: %w", err)
 	}
 
-	deviceConfig := malgo.DefaultDeviceConfig(malgo.Capture)
-	deviceConfig.Capture.Format = malgo.FormatS16 // 16-bit PCM
-	deviceConfig.Capture.Channels = channels
-	deviceConfig.SampleRate = sampleRate
-	deviceConfig.Alsa.NoMMap = 1
+	defaultConfig := malgo.DefaultDeviceConfig(malgo.Capture)
+	defaultConfig.Capture.Format = malgo.FormatS16 // 16-bit PCM
+	defaultConfig.Capture.Channels = channels
+	defaultConfig.SampleRate = sampleRate
+	defaultConfig.Alsa.NoMMap = 1
 
-	return &AudioRecorder{
-		ctx:           ctx,
-		deviceConfig:  deviceConfig,
+	ar := &AudioRecorder{
+		defaultCtx:    defaultCtx,
+		defaultConfig: defaultConfig,
 		capturedData:  make([]byte, 0),
 		isRecording:   false,
 		sampleRate:    sampleRate,
 		channels:      channels,
 		volume:        1.0, // Default to 100% volume
 		bitsPerSample: bitsPerSample,
-	}, nil
+		micCh:         make(chan []byte, 64), // NEW
+		bhCh:          make(chan []byte, 64), // NEW
+	}
+
+	blackHoleCtx, err := malgo.InitContext(nil, malgo.ContextConfig{}, func(message string) {
+		fmt.Printf("LOG <%v>\n", strings.TrimSuffix(message, "\n"))
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize context: %w", err)
+	}
+
+	ar.blackHoleCtx = blackHoleCtx
+	blackHoleConfig := malgo.DefaultDeviceConfig(malgo.Capture)
+	blackHoleConfig.Capture.Format = malgo.FormatS16 // 16-bit PCM
+	blackHoleConfig.Capture.Channels = channels
+	blackHoleConfig.SampleRate = sampleRate
+	device := ar.getBlackHoleDevice()
+	blackHoleConfig.Capture.DeviceID = device.ID.Pointer()
+	blackHoleConfig.Alsa.NoMMap = 1
+
+	ar.blackHoleConfig = blackHoleConfig
+
+	return ar, nil
 }
 
-// StartRecording begins capturing audio from the default microphone
+func (ar *AudioRecorder) getBlackHoleDevice() (device malgo.DeviceInfo) {
+	captureInfos, err := ar.blackHoleCtx.Devices(malgo.Capture)
+	if err != nil {
+		return
+	}
+
+	for _, captureInfo := range captureInfos {
+		if strings.Contains(strings.ToLower(captureInfo.Name()), "blackhole") {
+			return captureInfo
+		}
+	}
+
+	return
+}
+
+// StartRecording begins capturing audio from the mic + BlackHole and merges them
 func (ar *AudioRecorder) StartRecording() error {
 	if ar.isRecording {
 		return fmt.Errorf("recording is already in progress")
@@ -82,32 +132,105 @@ func (ar *AudioRecorder) StartRecording() error {
 
 	// Clear previous recording data
 	ar.capturedData = make([]byte, 0)
+	ar.isRecording = true
 
-	callbacks := malgo.DeviceCallbacks{
-		Data: func(_, pSample []byte, _ uint32) {
-			ar.capturedData = append(ar.capturedData, pSample...)
+	// Recreate channels in case of multiple recordings
+	ar.micCh = make(chan []byte, 64)
+	ar.bhCh = make(chan []byte, 64)
+
+	// --- MIC CALLBACK ---
+	micCallbacks := malgo.DeviceCallbacks{
+		Data: func(_, in []byte, _ uint32) {
+			if !ar.isRecording || len(in) == 0 {
+				return
+			}
+			buf := make([]byte, len(in))
+			copy(buf, in)
+			select {
+			case ar.micCh <- buf:
+			default:
+				// channel full - drop
+			}
 		},
 	}
 
-	device, err := malgo.InitDevice(ar.ctx.Context, ar.deviceConfig, callbacks)
-	if err != nil {
-		return fmt.Errorf("failed to initialize device: %w", err)
+	// --- BLACKHOLE CALLBACK ---
+	bhCallbacks := malgo.DeviceCallbacks{
+		Data: func(_, in []byte, _ uint32) {
+			if !ar.isRecording || len(in) == 0 {
+				return
+			}
+			buf := make([]byte, len(in))
+			copy(buf, in)
+			select {
+			case ar.bhCh <- buf:
+			default:
+				// channel full - drop
+			}
+		},
 	}
 
-	err = device.Start()
+	// Init mic device
+	micDevice, err := malgo.InitDevice(ar.defaultCtx.Context, ar.defaultConfig, micCallbacks)
 	if err != nil {
-		return fmt.Errorf("failed to start device: %w", err)
+		ar.isRecording = false
+		return fmt.Errorf("failed to initialize mic device: %w", err)
+	}
+	ar.micDevice = micDevice
+
+	// Init BlackHole device
+	bhDevice, err := malgo.InitDevice(ar.blackHoleCtx.Context, ar.blackHoleConfig, bhCallbacks)
+	if err != nil {
+		ar.isRecording = false
+		ar.micDevice.Uninit()
+		ar.micDevice = nil
+		return fmt.Errorf("failed to initialize BlackHole device: %w", err)
+	}
+	ar.blackHoleDevice = bhDevice
+
+	// Start both devices
+	if err := ar.micDevice.Start(); err != nil {
+		ar.isRecording = false
+		ar.micDevice.Uninit()
+		ar.blackHoleDevice.Uninit()
+		ar.micDevice = nil
+		ar.blackHoleDevice = nil
+		return fmt.Errorf("failed to start mic device: %w", err)
 	}
 
-	ar.isRecording = true
+	if err := ar.blackHoleDevice.Start(); err != nil {
+		ar.isRecording = false
+		ar.micDevice.Stop()
+		ar.micDevice.Uninit()
+		ar.blackHoleDevice.Uninit()
+		ar.micDevice = nil
+		ar.blackHoleDevice = nil
+		return fmt.Errorf("failed to start BlackHole device: %w", err)
+	}
+
 	fmt.Printf("Recording started... Sample Rate: %d Hz, Channels: %d\n", ar.sampleRate, ar.channels)
 
-	// Store device reference for stopping
+	// Mixer goroutine: merge mic + BlackHole into capturedData
+	go func() {
+		for {
+			micBuf, ok1 := <-ar.micCh
+			bhBuf, ok2 := <-ar.bhCh
+
+			if !ok1 || !ok2 {
+				return
+			}
+
+			ar.mx.Lock()
+			ar.capturedData = append(ar.capturedData, mixInt16Stereo(micBuf, bhBuf)...)
+			ar.mx.Unlock()
+		}
+	}()
+
+	// Watcher to uninit devices once recording stops (extra safety)
 	go func() {
 		for ar.isRecording {
 			time.Sleep(100 * time.Millisecond)
 		}
-		device.Uninit()
 	}()
 
 	return nil
@@ -120,6 +243,27 @@ func (ar *AudioRecorder) StopRecording() error {
 	}
 
 	ar.isRecording = false
+
+	// Stop and uninit devices
+	if ar.micDevice != nil {
+		_ = ar.micDevice.Stop()
+		ar.micDevice.Uninit()
+		ar.micDevice = nil
+	}
+	if ar.blackHoleDevice != nil {
+		_ = ar.blackHoleDevice.Stop()
+		ar.blackHoleDevice.Uninit()
+		ar.blackHoleDevice = nil
+	}
+
+	// Close channels so mixer goroutine can exit
+	if ar.micCh != nil {
+		close(ar.micCh)
+	}
+	if ar.bhCh != nil {
+		close(ar.bhCh)
+	}
+
 	fmt.Printf("Recording stopped. Captured %d bytes\n", len(ar.capturedData))
 	return nil
 }
@@ -220,7 +364,7 @@ func (ar *AudioRecorder) applyVolume(audioData []byte) []byte {
 func (ar *AudioRecorder) GetInputDevices() ([]AudioDevice, error) {
 	var devices []AudioDevice
 
-	captureInfos, err := ar.ctx.Devices(malgo.Capture)
+	captureInfos, err := ar.defaultCtx.Devices(malgo.Capture)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get capture devices: %w", err)
 	}
@@ -245,7 +389,7 @@ func (ar *AudioRecorder) SetInputDeviceByID(deviceID string) error {
 		return fmt.Errorf("cannot change input device while recording")
 	}
 
-	infos, err := ar.ctx.Devices(malgo.Capture)
+	infos, err := ar.defaultCtx.Devices(malgo.Capture)
 	if err != nil {
 		return fmt.Errorf("failed to get capture devices: %w", err)
 	}
@@ -253,11 +397,68 @@ func (ar *AudioRecorder) SetInputDeviceByID(deviceID string) error {
 	for _, info := range infos {
 		if info.ID.String() == deviceID {
 			// Update device config with the specific device
-			ar.deviceConfig.Capture.DeviceID = info.ID.Pointer()
+			ar.defaultConfig.Capture.DeviceID = info.ID.Pointer()
 			fmt.Printf("Input device set to: %s (%s)\n", info.Name(), info.ID.String())
 			return nil
 		}
 	}
 
 	return fmt.Errorf("input device with ID %s not found", deviceID)
+}
+
+func mixInt16Stereo(a, b []byte) []byte {
+	// Per-stream gains – tune these if needed
+	const gainA = 0.5
+	const gainB = 0.5
+
+	// Both empty
+	if len(a) == 0 && len(b) == 0 {
+		return nil
+	}
+	// Only one present – just copy it
+	if len(a) == 0 {
+		out := make([]byte, len(b))
+		copy(out, b)
+		return out
+	}
+	if len(b) == 0 {
+		out := make([]byte, len(a))
+		copy(out, a)
+		return out
+	}
+
+	samplesA := len(a) / 2
+	samplesB := len(b) / 2
+	maxSamples := samplesA
+	if samplesB > maxSamples {
+		maxSamples = samplesB
+	}
+
+	out := make([]byte, maxSamples*2)
+
+	for i := 0; i < maxSamples; i++ {
+		var s1, s2 int16
+
+		if i < samplesA {
+			s1 = int16(binary.LittleEndian.Uint16(a[i*2:]))
+		}
+		if i < samplesB {
+			s2 = int16(binary.LittleEndian.Uint16(b[i*2:]))
+		}
+
+		// apply gain and mix
+		v := float32(s1)*gainA + float32(s2)*gainB
+		iv := int32(v)
+
+		// clamp to int16
+		if iv > 32767 {
+			iv = 32767
+		} else if iv < -32768 {
+			iv = -32768
+		}
+
+		binary.LittleEndian.PutUint16(out[i*2:], uint16(int16(iv)))
+	}
+
+	return out
 }
