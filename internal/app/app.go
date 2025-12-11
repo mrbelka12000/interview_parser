@@ -145,3 +145,8 @@ func (a *App) GetGlobalAnalyticsAPI(dateFrom, dateTo string, minAccuracy, maxAcc
 
 	return a.GetGlobalAnalytics(filters)
 }
+
+// GetWebSocketURL returns the WebSocket server URL for the mock interview
+func (a *App) GetWebSocketURL() string {
+	return fmt.Sprintf("ws://localhost:%d/ws", a.cfg.WSServerPort)
+}

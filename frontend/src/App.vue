@@ -6,6 +6,7 @@ import FileUpload from './components/FileUpload.vue'
 import ApiKeyManager from './components/ApiKeyManager.vue'
 import AudioRecorder from './components/AudioRecorder.vue'
 import Analytics from './components/Analytics.vue'
+import MockInterview from './components/MockInterview.vue'
 import { ref } from 'vue'
 
 const currentView = ref('explorer')
@@ -72,6 +73,13 @@ const backToFileExplorer = () => {
           📊 Analytics
         </button>
         <button
+          @click="switchView('interview')"
+          :class="{ active: currentView === 'interview' }"
+          class="nav-tab"
+        >
+          🎯 Mock Interview
+        </button>
+        <button
           @click="switchView('greet')"
           :class="{ active: currentView === 'greet' }"
           class="nav-tab"
@@ -111,6 +119,7 @@ const backToFileExplorer = () => {
         @navigate-to="navigateToDirectory"
       />
       <Analytics v-else-if="currentView === 'analytics'" />
+      <MockInterview v-else-if="currentView === 'interview'" />
       <HelloWorld v-else-if="currentView === 'greet'" />
     </main>
   </div>

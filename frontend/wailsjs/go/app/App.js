@@ -54,6 +54,10 @@ export function GetRecordingStatus() {
   return window['go']['app']['App']['GetRecordingStatus']();
 }
 
+export function GetWebSocketURL() {
+  return window['go']['app']['App']['GetWebSocketURL']();
+}
+
 export function Greet(arg1) {
   return window['go']['app']['App']['Greet'](arg1);
 }

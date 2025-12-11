@@ -29,6 +29,8 @@ export function GetOpenAIAPIKey():Promise<app.APIKeyResult>;
 
 export function GetRecordingStatus():Promise<app.RecordingResult>;
 
+export function GetWebSocketURL():Promise<string>;
+
 export function Greet(arg1:string):Promise<string>;
 
 export function PickFile():Promise<string>;
