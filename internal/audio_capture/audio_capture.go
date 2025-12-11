@@ -3,30 +3,14 @@ package audiocapture
 import (
 	"encoding/binary"
 	"fmt"
-	"os"
+	"log"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/gen2brain/malgo"
-)
 
-// WAV header structure for PCM audio
-type WAVHeader struct {
-	ChunkID       [4]byte // "RIFF"
-	ChunkSize     uint32
-	Format        [4]byte // "WAVE"
-	Subchunk1ID   [4]byte // "fmt "
-	Subchunk1Size uint32  // 16 for PCM
-	AudioFormat   uint16  // 1 for PCM
-	NumChannels   uint16
-	SampleRate    uint32
-	ByteRate      uint32
-	BlockAlign    uint16
-	BitsPerSample uint16
-	Subchunk2ID   [4]byte // "data"
-	Subchunk2Size uint32
-}
+	"github.com/mrbelka12000/interview_parser/internal/wav"
+)
 
 // AudioDevice represents an audio device information
 type AudioDevice struct {
@@ -37,8 +21,8 @@ type AudioDevice struct {
 	IsDefault bool   `json:"isDefault"`
 }
 
-// AudioRecorder handles audio recording and saving
-type AudioRecorder struct {
+// AudioCapturer handles audio capturing and saving
+type AudioCapturer struct {
 	defaultCtx      *malgo.AllocatedContext
 	blackHoleCtx    *malgo.AllocatedContext
 	defaultConfig   malgo.DeviceConfig
@@ -53,17 +37,18 @@ type AudioRecorder struct {
 	mx sync.Mutex
 
 	capturedData  []byte
-	isRecording   bool
-	volume        float32 // Volume multiplier (0.0 to 1.0)
+	isCapturing   bool
 	sampleRate    uint32
 	channels      uint32
 	bitsPerSample uint16
+
+	wav *wav.Writer
 }
 
-// NewAudioRecorder creates a new audio recorder instance
-func NewAudioRecorder(sampleRate uint32, channels uint32, bitsPerSample uint16) (*AudioRecorder, error) {
+// NewAudioCapturer creates a new audio recorder instance
+func NewAudioCapturer(sampleRate uint32, channels uint32, bitsPerSample uint16) (*AudioCapturer, error) {
 	defaultCtx, err := malgo.InitContext(nil, malgo.ContextConfig{}, func(message string) {
-		fmt.Printf("LOG <%v>\n", strings.TrimSuffix(message, "\n"))
+		log.Printf("[I] AUDIO_CAPTURER <%v>\n", strings.TrimSuffix(message, "\n"))
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize context: %w", err)
@@ -75,21 +60,21 @@ func NewAudioRecorder(sampleRate uint32, channels uint32, bitsPerSample uint16) 
 	defaultConfig.SampleRate = sampleRate
 	defaultConfig.Alsa.NoMMap = 1
 
-	ar := &AudioRecorder{
+	ar := &AudioCapturer{
 		defaultCtx:    defaultCtx,
 		defaultConfig: defaultConfig,
 		capturedData:  make([]byte, 0),
-		isRecording:   false,
+		isCapturing:   false,
 		sampleRate:    sampleRate,
 		channels:      channels,
-		volume:        1.0, // Default to 100% volume
 		bitsPerSample: bitsPerSample,
 		micCh:         make(chan []byte, 64), // NEW
 		bhCh:          make(chan []byte, 64), // NEW
+		wav:           wav.NewWriter(sampleRate, channels, bitsPerSample),
 	}
 
 	blackHoleCtx, err := malgo.InitContext(nil, malgo.ContextConfig{}, func(message string) {
-		fmt.Printf("LOG <%v>\n", strings.TrimSuffix(message, "\n"))
+		log.Printf("[I] LOG <%v>\n", strings.TrimSuffix(message, "\n"))
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize context: %w", err)
@@ -109,7 +94,7 @@ func NewAudioRecorder(sampleRate uint32, channels uint32, bitsPerSample uint16) 
 	return ar, nil
 }
 
-func (ar *AudioRecorder) getBlackHoleDevice() (device malgo.DeviceInfo) {
+func (ar *AudioCapturer) getBlackHoleDevice() (device malgo.DeviceInfo) {
 	captureInfos, err := ar.blackHoleCtx.Devices(malgo.Capture)
 	if err != nil {
 		return
@@ -124,24 +109,24 @@ func (ar *AudioRecorder) getBlackHoleDevice() (device malgo.DeviceInfo) {
 	return
 }
 
-// StartRecording begins capturing audio from the mic + BlackHole and merges them
-func (ar *AudioRecorder) StartRecording() error {
-	if ar.isRecording {
-		return fmt.Errorf("recording is already in progress")
+// Start begins capturing audio from the mic + BlackHole and merges them
+func (ar *AudioCapturer) Start() error {
+	if ar.isCapturing {
+		return fmt.Errorf("capturing is already in progress")
 	}
 
-	// Clear previous recording data
+	// Clear previous capturing data
 	ar.capturedData = make([]byte, 0)
-	ar.isRecording = true
+	ar.isCapturing = true
 
-	// Recreate channels in case of multiple recordings
+	// Recreate channels in case of multiple capturing
 	ar.micCh = make(chan []byte, 64)
 	ar.bhCh = make(chan []byte, 64)
 
 	// --- MIC CALLBACK ---
 	micCallbacks := malgo.DeviceCallbacks{
 		Data: func(_, in []byte, _ uint32) {
-			if !ar.isRecording || len(in) == 0 {
+			if !ar.isCapturing || len(in) == 0 {
 				return
 			}
 			buf := make([]byte, len(in))
@@ -157,7 +142,7 @@ func (ar *AudioRecorder) StartRecording() error {
 	// --- BLACKHOLE CALLBACK ---
 	bhCallbacks := malgo.DeviceCallbacks{
 		Data: func(_, in []byte, _ uint32) {
-			if !ar.isRecording || len(in) == 0 {
+			if !ar.isCapturing || len(in) == 0 {
 				return
 			}
 			buf := make([]byte, len(in))
@@ -173,7 +158,7 @@ func (ar *AudioRecorder) StartRecording() error {
 	// Init mic device
 	micDevice, err := malgo.InitDevice(ar.defaultCtx.Context, ar.defaultConfig, micCallbacks)
 	if err != nil {
-		ar.isRecording = false
+		ar.isCapturing = false
 		return fmt.Errorf("failed to initialize mic device: %w", err)
 	}
 	ar.micDevice = micDevice
@@ -181,7 +166,7 @@ func (ar *AudioRecorder) StartRecording() error {
 	// Init BlackHole device
 	bhDevice, err := malgo.InitDevice(ar.blackHoleCtx.Context, ar.blackHoleConfig, bhCallbacks)
 	if err != nil {
-		ar.isRecording = false
+		ar.isCapturing = false
 		ar.micDevice.Uninit()
 		ar.micDevice = nil
 		return fmt.Errorf("failed to initialize BlackHole device: %w", err)
@@ -190,7 +175,7 @@ func (ar *AudioRecorder) StartRecording() error {
 
 	// Start both devices
 	if err := ar.micDevice.Start(); err != nil {
-		ar.isRecording = false
+		ar.isCapturing = false
 		ar.micDevice.Uninit()
 		ar.blackHoleDevice.Uninit()
 		ar.micDevice = nil
@@ -199,7 +184,7 @@ func (ar *AudioRecorder) StartRecording() error {
 	}
 
 	if err := ar.blackHoleDevice.Start(); err != nil {
-		ar.isRecording = false
+		ar.isCapturing = false
 		ar.micDevice.Stop()
 		ar.micDevice.Uninit()
 		ar.blackHoleDevice.Uninit()
@@ -208,7 +193,7 @@ func (ar *AudioRecorder) StartRecording() error {
 		return fmt.Errorf("failed to start BlackHole device: %w", err)
 	}
 
-	fmt.Printf("Recording started... Sample Rate: %d Hz, Channels: %d\n", ar.sampleRate, ar.channels)
+	log.Printf("[I] Capturing started... Sample Rate: %d Hz, Channels: %d\n", ar.sampleRate, ar.channels)
 
 	// Mixer goroutine: merge mic + BlackHole into capturedData
 	go func() {
@@ -226,23 +211,16 @@ func (ar *AudioRecorder) StartRecording() error {
 		}
 	}()
 
-	// Watcher to uninit devices once recording stops (extra safety)
-	go func() {
-		for ar.isRecording {
-			time.Sleep(100 * time.Millisecond)
-		}
-	}()
-
 	return nil
 }
 
-// StopRecording stops the audio capture
-func (ar *AudioRecorder) StopRecording() error {
-	if !ar.isRecording {
-		return fmt.Errorf("no recording in progress")
+// Stop stops the audio capture
+func (ar *AudioCapturer) Stop() error {
+	if !ar.isCapturing {
+		return fmt.Errorf("no capturing in progress")
 	}
 
-	ar.isRecording = false
+	ar.isCapturing = false
 
 	// Stop and uninit devices
 	if ar.micDevice != nil {
@@ -264,67 +242,12 @@ func (ar *AudioRecorder) StopRecording() error {
 		close(ar.bhCh)
 	}
 
-	fmt.Printf("Recording stopped. Captured %d bytes\n", len(ar.capturedData))
+	log.Printf("[I] Capturing stopped. Captured %d bytes\n", len(ar.capturedData))
 	return nil
-}
-
-// SaveAsWAV saves the captured audio as a WAV file
-func (ar *AudioRecorder) SaveAsWAV(filename string) error {
-	if len(ar.capturedData) == 0 {
-		return fmt.Errorf("no audio data to save")
-	}
-
-	file, err := os.Create(filename)
-	if err != nil {
-		return fmt.Errorf("failed to create file: %w", err)
-	}
-	defer file.Close()
-
-	// Calculate sizes
-	dataSize := uint32(len(ar.capturedData))
-	headerSize := uint32(44)
-	totalSize := headerSize + dataSize
-
-	// Create WAV header
-	header := WAVHeader{
-		ChunkID:       [4]byte{'R', 'I', 'F', 'F'},
-		ChunkSize:     totalSize - 8, // Total size - 8 bytes for ChunkID and ChunkSize
-		Format:        [4]byte{'W', 'A', 'V', 'E'},
-		Subchunk1ID:   [4]byte{'f', 'm', 't', ' '},
-		Subchunk1Size: 16, // PCM format
-		AudioFormat:   1,  // PCM
-		NumChannels:   uint16(ar.channels),
-		SampleRate:    ar.sampleRate,
-		ByteRate:      ar.sampleRate * uint32(ar.channels) * uint32(ar.bitsPerSample) / 8,
-		BlockAlign:    uint16(ar.channels) * ar.bitsPerSample / 8,
-		BitsPerSample: ar.bitsPerSample,
-		Subchunk2ID:   [4]byte{'d', 'a', 't', 'a'},
-		Subchunk2Size: dataSize,
-	}
-
-	// Write header
-	err = binary.Write(file, binary.LittleEndian, &header)
-	if err != nil {
-		return fmt.Errorf("failed to write header: %w", err)
-	}
-
-	// Write audio data
-	_, err = file.Write(ar.applyVolume(ar.capturedData))
-	if err != nil {
-		return fmt.Errorf("failed to write audio data: %w", err)
-	}
-
-	fmt.Printf("Audio saved as WAV file: %s\n", filename)
-	return nil
-}
-
-// GetCapturedData returns the captured audio data
-func (ar *AudioRecorder) GetCapturedData() []byte {
-	return ar.capturedData
 }
 
 // GetAudioInfo returns information about the captured audio
-func (ar *AudioRecorder) GetAudioInfo() map[string]interface{} {
+func (ar *AudioCapturer) GetAudioInfo() map[string]interface{} {
 	duration := float64(len(ar.capturedData)) / float64(ar.sampleRate*ar.channels*2) // 2 bytes per sample for 16-bit
 	return map[string]interface{}{
 		"sample_rate":      ar.sampleRate,
@@ -335,33 +258,8 @@ func (ar *AudioRecorder) GetAudioInfo() map[string]interface{} {
 	}
 }
 
-// applyVolume applies volume to audio samples
-func (ar *AudioRecorder) applyVolume(audioData []byte) []byte {
-	if ar.volume == 1.0 {
-		return audioData // No change needed
-	}
-
-	// Convert to int16 samples, apply volume, convert back
-	samples := make([]int16, len(audioData)/2)
-	for i := 0; i < len(samples); i++ {
-		// Little-endian 16-bit samples
-		sample := int16(audioData[i*2]) | int16(audioData[i*2+1])<<8
-		sample = int16(float32(sample) * ar.volume)
-		samples[i] = sample
-	}
-
-	// Convert back to bytes
-	result := make([]byte, len(audioData))
-	for i, sample := range samples {
-		result[i*2] = byte(sample)
-		result[i*2+1] = byte(sample >> 8)
-	}
-
-	return result
-}
-
 // GetInputDevices returns a list of available input devices
-func (ar *AudioRecorder) GetInputDevices() ([]AudioDevice, error) {
+func (ar *AudioCapturer) GetInputDevices() ([]AudioDevice, error) {
 	var devices []AudioDevice
 
 	captureInfos, err := ar.defaultCtx.Devices(malgo.Capture)
@@ -370,6 +268,10 @@ func (ar *AudioRecorder) GetInputDevices() ([]AudioDevice, error) {
 	}
 
 	for _, info := range captureInfos {
+		if strings.Contains(strings.ToLower(info.Name()), "blackhole") || strings.Contains(strings.ToLower(info.Name()), "pods") {
+			continue
+		}
+
 		device := AudioDevice{
 			ID:        info.ID.String(),
 			Name:      info.Name(),
@@ -383,10 +285,10 @@ func (ar *AudioRecorder) GetInputDevices() ([]AudioDevice, error) {
 	return devices, nil
 }
 
-// SetInputDeviceByID sets the audio input device by device ID for recording
-func (ar *AudioRecorder) SetInputDeviceByID(deviceID string) error {
-	if ar.isRecording {
-		return fmt.Errorf("cannot change input device while recording")
+// SetInputDeviceByID sets the audio input device by device ID for capturing
+func (ar *AudioCapturer) SetInputDeviceByID(deviceID string) error {
+	if ar.isCapturing {
+		return fmt.Errorf("cannot change input device while capturing")
 	}
 
 	infos, err := ar.defaultCtx.Devices(malgo.Capture)
@@ -398,12 +300,16 @@ func (ar *AudioRecorder) SetInputDeviceByID(deviceID string) error {
 		if info.ID.String() == deviceID {
 			// Update device config with the specific device
 			ar.defaultConfig.Capture.DeviceID = info.ID.Pointer()
-			fmt.Printf("Input device set to: %s (%s)\n", info.Name(), info.ID.String())
+			log.Printf("[I] Input device set to: %s (%s)\n", info.Name(), info.ID.String())
 			return nil
 		}
 	}
 
 	return fmt.Errorf("input device with ID %s not found", deviceID)
+}
+
+func (ar *AudioCapturer) SaveAsWAV(filePath string) error {
+	return ar.wav.SaveAsWAV(filePath, ar.capturedData)
 }
 
 func mixInt16Stereo(a, b []byte) []byte {

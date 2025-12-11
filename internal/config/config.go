@@ -22,6 +22,7 @@ type Config struct {
 	DefaultAnalyzeDir         string
 	DefaultOutputName         string
 	DefaultAnalyzeCallDir     string
+	WSServerPort              int
 
 	AudioSampleRate uint32
 	AudioChannels   uint32
@@ -42,6 +43,7 @@ const (
 	defaultAudioSampleRate           = 48000
 	defaultAudioChannels             = 2
 	defaultAudioBitrate              = 16
+	defaultWSServerPort              = 35044
 )
 
 func ParseConfig() *Config {
@@ -70,6 +72,7 @@ func ParseConfig() *Config {
 		AudioSampleRate:           defaultAudioSampleRate,
 		AudioChannels:             defaultAudioChannels,
 		AudioBitrate:              defaultAudioBitrate,
+		WSServerPort:              defaultWSServerPort,
 	}
 
 	// Set derived paths

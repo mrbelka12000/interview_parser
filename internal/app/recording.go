@@ -27,7 +27,7 @@ func (a *App) StartAudioRecording() (*RecordingResult, error) {
 		}, nil
 	}
 
-	err := a.audioRecorder.StartRecording()
+	err := a.audioRecorder.Start()
 	if err != nil {
 		return &RecordingResult{
 			Success: false,
@@ -50,7 +50,7 @@ func (a *App) StopAudioRecording() (*RecordingResult, error) {
 		}, nil
 	}
 
-	err := a.audioRecorder.StopRecording()
+	err := a.audioRecorder.Stop()
 	if err != nil {
 		return &RecordingResult{
 			Success: false,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -11,6 +12,7 @@ import (
 	audiocapture "github.com/mrbelka12000/interview_parser/internal/audio_capture"
 	"github.com/mrbelka12000/interview_parser/internal/client"
 	"github.com/mrbelka12000/interview_parser/internal/config"
+	"github.com/mrbelka12000/interview_parser/internal/delivery/ws"
 	"github.com/mrbelka12000/interview_parser/internal/parser"
 )
 
@@ -29,12 +31,12 @@ type App struct {
 	cfg           *config.Config
 	aiClient      *client.Client
 	parser        *parser.Parser
-	audioRecorder *audiocapture.AudioRecorder
+	audioRecorder *audiocapture.AudioCapturer
 }
 
 // NewApp creates a new App application struct
 func NewApp(cfg *config.Config) *App {
-	audioRecorder, err := audiocapture.NewAudioRecorder(cfg.AudioSampleRate, cfg.AudioChannels, cfg.AudioBitrate)
+	audioRecorder, err := audiocapture.NewAudioCapturer(cfg.AudioSampleRate, cfg.AudioChannels, cfg.AudioBitrate)
 	if err != nil {
 		log.Println(fmt.Sprintf("Error creating audio recorder %v", err))
 	}
@@ -51,6 +53,12 @@ func NewApp(cfg *config.Config) *App {
 // so we can call the runtime methods
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
+
+	sync.OnceFunc(func() {
+		if err := ws.RunServer(a.cfg); err != nil {
+			log.Println(fmt.Sprintf("Error starting WS server: %v", err))
+		}
+	})()
 }
 
 // Greet returns a greeting for the given name
@@ -87,53 +95,53 @@ func (a *App) GetInterviewAnalyticsAPI(interviewPath string) (*InterviewAnalytic
 // GetAllInterviewAnalyticsAPI retrieves all interview analytics with optional filters
 func (a *App) GetAllInterviewAnalyticsAPI(dateFrom, dateTo string, minAccuracy, maxAccuracy float64) ([]InterviewAnalytics, error) {
 	filters := &AnalyticsFilters{}
-	
+
 	if dateFrom != "" {
 		if parsed, err := time.Parse("2006-01-02", dateFrom); err == nil {
 			filters.DateFrom = &parsed
 		}
 	}
-	
+
 	if dateTo != "" {
 		if parsed, err := time.Parse("2006-01-02", dateTo); err == nil {
 			filters.DateTo = &parsed
 		}
 	}
-	
+
 	if minAccuracy > 0 {
 		filters.MinAccuracy = &minAccuracy
 	}
-	
+
 	if maxAccuracy > 0 {
 		filters.MaxAccuracy = &maxAccuracy
 	}
-	
+
 	return a.GetAllInterviewAnalytics(filters)
 }
 
 // GetGlobalAnalyticsAPI calculates aggregated statistics across all interviews
 func (a *App) GetGlobalAnalyticsAPI(dateFrom, dateTo string, minAccuracy, maxAccuracy float64) (*GlobalAnalytics, error) {
 	filters := &AnalyticsFilters{}
-	
+
 	if dateFrom != "" {
 		if parsed, err := time.Parse("2006-01-02", dateFrom); err == nil {
 			filters.DateFrom = &parsed
 		}
 	}
-	
+
 	if dateTo != "" {
 		if parsed, err := time.Parse("2006-01-02", dateTo); err == nil {
 			filters.DateTo = &parsed
 		}
 	}
-	
+
 	if minAccuracy > 0 {
 		filters.MinAccuracy = &minAccuracy
 	}
-	
+
 	if maxAccuracy > 0 {
 		filters.MaxAccuracy = &maxAccuracy
 	}
-	
+
 	return a.GetGlobalAnalytics(filters)
 }
