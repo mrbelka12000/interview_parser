@@ -30,9 +30,10 @@ const (
 
 // WSMessage represents a WebSocket message
 type WSMessage struct {
-	Type      MessageType `json:"type"`
-	Data      interface{} `json:"data"`
-	Timestamp time.Time   `json:"timestamp"`
+	Type          MessageType `json:"type"`
+	Data          interface{} `json:"data"`
+	Timestamp     time.Time   `json:"timestamp"`
+	AnalyticsData interface{} `json:"analytics_data"`
 }
 
 // StartMessage represents interview start request
@@ -297,9 +298,6 @@ func (s *InterviewSession) handleResponseMessage(msg WSMessage) {
 	}
 	s.sendMessage(userResponse)
 
-	// Generate analytics for this answer
-	go s.generateAnswerAnalytics(currentIdx)
-
 	// Move to next question after a brief delay
 	time.Sleep(1 * time.Second)
 
@@ -310,23 +308,6 @@ func (s *InterviewSession) handleResponseMessage(msg WSMessage) {
 	// Send next question
 	time.Sleep(1 * time.Second)
 	s.sendNextQuestion()
-}
-
-func (s *InterviewSession) generateAnswerAnalytics(questionIndex int) {
-	s.mutex.RLock()
-	if questionIndex >= len(s.questions) || questionIndex >= len(s.answers) {
-		s.mutex.RUnlock()
-		return
-	}
-
-	s.mutex.RUnlock()
-
-	// Send analytics to frontend
-	analyticsMsg := WSMessage{
-		Type:      MessageTypeAnalytics,
-		Timestamp: time.Now(),
-	}
-	s.sendMessage(analyticsMsg)
 }
 
 func (s *InterviewSession) handleAudioMessage(msg WSMessage) {
@@ -445,15 +426,15 @@ func (s *InterviewSession) generateFinalAnalytics() {
 		return
 	}
 
-	// TODO not send to chat, display on frontend, fix from ai flag
 	summaryMsg := WSMessage{
-		Type: MessageTypeResponse,
+		Type: MessageTypeAnalytics,
 		Data: ResponseMessage{
 			Text:      resp.CandidateSummary,
 			Timestamp: time.Now(),
 			IsFromAI:  true,
 		},
-		Timestamp: time.Now(),
+		AnalyticsData: resp,
+		Timestamp:     time.Now(),
 	}
 	s.sendMessage(summaryMsg)
 }

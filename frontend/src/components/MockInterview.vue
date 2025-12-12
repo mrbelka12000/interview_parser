@@ -106,43 +106,26 @@
           </button>
         </div>
 
-        <!-- Analytics Panel -->
-        <div v-if="analytics.length > 0" class="analytics-panel">
-          <h3>📊 Answer Analytics</h3>
-          <div class="analytics-grid">
-            <div
-              v-for="analytic in analytics"
-              :key="analytic.question_index"
-              class="analytics-card"
-            >
-              <div class="analytics-header">
-                <span class="question-number">Q{{ analytic.question_index + 1 }}</span>
-                <span class="category">{{ analytic.category }}</span>
-                <span :class="['accuracy', getAccuracyClass(analytic.accuracy)]">
-                  {{ Math.round(analytic.accuracy * 100) }}%
-                </span>
-              </div>
-              <div class="analytics-content">
-                <p class="question">{{ analytic.question }}</p>
-                <p class="answer">{{ analytic.answer.substring(0, 100) }}...</p>
-                <p class="feedback">{{ analytic.feedback }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
 
         <!-- Chat Messages -->
         <div class="chat-container" ref="chatContainer">
           <div
-            v-for="message in messages"
-            :key="message.timestamp"
-            :class="['message', { 'ai-message': message.isFromAI, 'user-message': !message.isFromAI, 'question-message': message.isQuestion }]"
+              v-for="message in messages"
+              :key="message.timestamp"
+              :class="[
+      'message',
+      {
+        'ai-message': message.is_from_ai,
+        'user-message': !message.is_from_ai,
+        'question-message': message.isQuestion
+      }
+    ]"
           >
             <div class="message-content">
               <div class="message-header">
-                <span class="sender">
-                  {{ message.isFromAI ?  '👤 You' : '🤖 Interviewer'  }}
-                </span>
+        <span class="sender">
+          {{ message.is_from_ai ? '🤖 Interviewer' : '👤 You' }}
+        </span>
                 <span class="timestamp">{{ formatTime(message.timestamp) }}</span>
               </div>
               <div class="message-text">{{ message.text }}</div>
@@ -152,11 +135,64 @@
           <!-- Typing Indicator -->
           <div v-if="isTyping" class="typing-indicator">
             <div class="typing-dots">
-              <span></span>
-              <span></span>
-              <span></span>
+              <span></span><span></span><span></span>
             </div>
             <span class="typing-text">Interviewer is typing...</span>
+          </div>
+        </div>
+
+        <div v-if="analysisResult" class="analytics-panel">
+          <h3>📊 Mock Interview Analysis</h3>
+
+          <!-- Summary -->
+          <div class="analytics-card">
+            <div class="analytics-header">
+      <span class="category">
+        Level: {{ analysisResult.evaluation_level }}
+      </span>
+              <span :class="['accuracy', getAccuracyClass(analysisResult.final_score.average_accuracy)]">
+        {{ Math.round(analysisResult.final_score.average_accuracy * 100) }}%
+      </span>
+            </div>
+
+            <div class="analytics-content">
+              <p class="feedback">{{ analysisResult.candidate_summary }}</p>
+              <p><strong>Verdict:</strong> {{ analysisResult.final_score.verdict }}</p>
+              <p>{{ analysisResult.final_score.verdict_reason }}</p>
+            </div>
+          </div>
+
+          <!-- 🔥 SINGLE ITERATION -->
+          <div class="analytics-grid">
+            <div
+                v-for="(q, idx) in analysisResult.questions_evaluation"
+                :key="idx"
+                class="analytics-card"
+            >
+              <div class="analytics-header">
+                <span class="question-number">{{idx+1}}: {{ q.question }}</span>
+                <span :class="['accuracy', getAccuracyClass(q.accuracy)]">
+          {{ Math.round(q.accuracy * 100) }}%
+        </span>
+              </div>
+
+              <div class="analytics-content">
+                <p class="question">{{ q.question }}</p>
+                <p class="answer">{{ q.answer }}</p>
+
+                <p class="feedback">
+                  <strong>Assessment:</strong> {{ q.assessment }}
+                </p>
+
+                <p v-if="q.reason_unanswered" class="feedback">
+                  <strong>Reason:</strong> {{ q.reason_unanswered }}
+                </p>
+
+                <p v-if="q.what_was_expected" class="feedback">
+                  <strong>Expected:</strong> {{ q.what_was_expected }}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -215,6 +251,7 @@
           <p><strong>Level:</strong> {{ interviewSetup.level }}</p>
           <p><strong>Questions Asked:</strong> {{ messages.filter(m => m.isQuestion).length }}</p>
           <p><strong>Duration:</strong> {{ interviewDuration }}</p>
+
           <div v-if="analytics.length > 0" class="final-analytics">
             <h4>📈 Performance Overview</h4>
             <p><strong>Average Accuracy:</strong> {{ Math.round(averageAccuracy * 100) }}%</p>
@@ -265,6 +302,11 @@ const isRecording = ref(false)
 const recordingDuration = ref(0)
 const recordingTimer = ref(null)
 const audioChunks = ref([])
+
+const mediaRecorder = ref(null)
+const mediaStream = ref(null)
+
+const analysisResult = ref(null)
 
 const averageAccuracy = computed(() => {
   if (analytics.value.length === 0) return 0
@@ -360,25 +402,28 @@ const handleMessage = (message) => {
       if (message.data) {
         messages.value.push({
           text: message.data.text,
-          isFromAI: message.data.isFromAI,
+          is_from_ai: message.data.is_from_ai,
           isQuestion: message.data.isQuestion,
           timestamp: new Date().toISOString()
         })
         scrollToBottom()
       }
       break
-      
-    case 'analytics':
-      if (message.data) {
-        analytics.value.push(message.data)
+
+    case 'analytics': {
+      const data = message.analytics_data
+      if (data?.questions_evaluation) {
+        analysisResult.value = data
+        scrollToBottom()
       }
       break
+    }
       
     case 'error':
       console.error('Server error:', message.data.error)
       messages.value.push({
         text: `Error: ${message.data.error}`,
-        isFromAI: true,
+        is_from_ai: true,
         timestamp: new Date().toISOString()
       })
       scrollToBottom()
@@ -404,7 +449,7 @@ const sendMessage = () => {
   // Add user message to chat
   messages.value.push({
     text: messageText,
-    isFromAI: false,
+    is_from_ai: false,
     timestamp: new Date().toISOString()
   })
   
@@ -447,12 +492,7 @@ const handleInterviewEnd = () => {
     questionsAsked: messages.value.filter(m => m.isQuestion).length,
     duration: interviewDuration.value
   }
-  
-  if (ws.value) {
-    ws.value.close()
-    ws.value = null
-  }
-  
+
   isConnected.value = false
 }
 
@@ -492,32 +532,32 @@ const toggleAudioRecording = () => {
 
 const startAudioRecording = async () => {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    const mediaRecorder = new MediaRecorder(stream)
-    
+    mediaStream.value = await navigator.mediaDevices.getUserMedia({ audio: true })
+    mediaRecorder.value = new MediaRecorder(mediaStream.value)
+
     audioChunks.value = []
     recordingDuration.value = 0
-    
-    mediaRecorder.ondataavailable = (event) => {
+
+    mediaRecorder.value.ondataavailable = (event) => {
       audioChunks.value.push(event.data)
     }
-    
-    mediaRecorder.onstop = () => {
+
+    mediaRecorder.value.onstop = () => {
       const audioBlob = new Blob(audioChunks.value, { type: 'audio/webm' })
       sendAudioData(audioBlob)
-      
+
       // Stop all tracks
-      stream.getTracks().forEach(track => track.stop())
+      mediaStream.value?.getTracks().forEach(t => t.stop())
+      mediaStream.value = null
+      mediaRecorder.value = null
     }
-    
-    mediaRecorder.start()
+
+    mediaRecorder.value.start()
     isRecording.value = true
-    
-    // Start recording duration timer
+
     recordingTimer.value = setInterval(() => {
       recordingDuration.value++
     }, 1000)
-    
   } catch (error) {
     console.error('Error starting audio recording:', error)
   }
@@ -528,7 +568,11 @@ const stopAudioRecording = () => {
     clearInterval(recordingTimer.value)
     recordingTimer.value = null
   }
-  
+
+  if (mediaRecorder.value && mediaRecorder.value.state !== 'inactive') {
+    mediaRecorder.value.stop()
+  }
+
   isRecording.value = false
   recordingDuration.value = 0
 }
@@ -718,7 +762,8 @@ h2 {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 15px;
-  max-height: 200px;
+  max-height: 300px;
+  padding-top: 10px;
   overflow-y: auto;
 }
 
