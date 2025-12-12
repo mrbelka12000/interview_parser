@@ -18,44 +18,6 @@ export namespace app {
 	        this.lastUpdated = source["lastUpdated"];
 	    }
 	}
-	export class AnalyticsFilters {
-	    // Go type: time
-	    dateFrom?: any;
-	    // Go type: time
-	    dateTo?: any;
-	    minAccuracy?: number;
-	    maxAccuracy?: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new AnalyticsFilters(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.dateFrom = this.convertValues(source["dateFrom"], null);
-	        this.dateTo = this.convertValues(source["dateTo"], null);
-	        this.minAccuracy = source["minAccuracy"];
-	        this.maxAccuracy = source["maxAccuracy"];
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
 	export class CallAnalysisResult {
 	    success: boolean;
 	    message: string;
@@ -151,6 +113,158 @@ export namespace app {
 	        this.size = source["size"];
 	        this.extension = source["extension"];
 	    }
+	}
+	export class RecordingResult {
+	    success: boolean;
+	    message: string;
+	    filePath?: string;
+	    duration?: number;
+	    dataSize?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new RecordingResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.message = source["message"];
+	        this.filePath = source["filePath"];
+	        this.duration = source["duration"];
+	        this.dataSize = source["dataSize"];
+	    }
+	}
+	export class TranscriptionResult {
+	    success: boolean;
+	    message: string;
+	    transcriptPath?: string;
+	    analysisPath?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TranscriptionResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.message = source["message"];
+	        this.transcriptPath = source["transcriptPath"];
+	        this.analysisPath = source["analysisPath"];
+	    }
+	}
+
+}
+
+export namespace audiocapture {
+	
+	export class AudioDevice {
+	    id: string;
+	    name: string;
+	    isInput: boolean;
+	    isOutput: boolean;
+	    isDefault: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new AudioDevice(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.isInput = source["isInput"];
+	        this.isOutput = source["isOutput"];
+	        this.isDefault = source["isDefault"];
+	    }
+	}
+
+}
+
+export namespace models {
+	
+	export class QuestionAnswer {
+	    id: number;
+	    interview_id: number;
+	    question: string;
+	    full_answer: string;
+	    accuracy: number;
+	    reason_unanswered: string;
+	    // Go type: time
+	    created_at: any;
+	    // Go type: time
+	    updated_at: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new QuestionAnswer(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.interview_id = source["interview_id"];
+	        this.question = source["question"];
+	        this.full_answer = source["full_answer"];
+	        this.accuracy = source["accuracy"];
+	        this.reason_unanswered = source["reason_unanswered"];
+	        this.created_at = this.convertValues(source["created_at"], null);
+	        this.updated_at = this.convertValues(source["updated_at"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class AnalyzeInterviewWithQA {
+	    id: number;
+	    qa: QuestionAnswer[];
+	    // Go type: time
+	    created_at: any;
+	    // Go type: time
+	    updated_at: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new AnalyzeInterviewWithQA(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.qa = this.convertValues(source["qa"], QuestionAnswer);
+	        this.created_at = this.convertValues(source["created_at"], null);
+	        this.updated_at = this.convertValues(source["updated_at"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class GlobalAnalytics {
 	    totalInterviews: number;
@@ -251,126 +365,6 @@ export namespace app {
 	        this.questionsWithReason = source["questionsWithReason"];
 	        this.createdAt = this.convertValues(source["createdAt"], null);
 	        this.updatedAt = this.convertValues(source["updatedAt"], null);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	export class RecordingResult {
-	    success: boolean;
-	    message: string;
-	    filePath?: string;
-	    duration?: number;
-	    dataSize?: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new RecordingResult(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.success = source["success"];
-	        this.message = source["message"];
-	        this.filePath = source["filePath"];
-	        this.duration = source["duration"];
-	        this.dataSize = source["dataSize"];
-	    }
-	}
-	export class TranscriptionResult {
-	    success: boolean;
-	    message: string;
-	    transcriptPath?: string;
-	    analysisPath?: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new TranscriptionResult(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.success = source["success"];
-	        this.message = source["message"];
-	        this.transcriptPath = source["transcriptPath"];
-	        this.analysisPath = source["analysisPath"];
-	    }
-	}
-
-}
-
-export namespace audiocapture {
-	
-	export class AudioDevice {
-	    id: string;
-	    name: string;
-	    isInput: boolean;
-	    isOutput: boolean;
-	    isDefault: boolean;
-	
-	    static createFrom(source: any = {}) {
-	        return new AudioDevice(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.name = source["name"];
-	        this.isInput = source["isInput"];
-	        this.isOutput = source["isOutput"];
-	        this.isDefault = source["isDefault"];
-	    }
-	}
-
-}
-
-export namespace client {
-	
-	export class Question {
-	    question: string;
-	    full_answer: string;
-	    accuracy: number;
-	    questioner: string;
-	    answerer: string;
-	    reason: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new Question(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.question = source["question"];
-	        this.full_answer = source["full_answer"];
-	        this.accuracy = source["accuracy"];
-	        this.questioner = source["questioner"];
-	        this.answerer = source["answerer"];
-	        this.reason = source["reason"];
-	    }
-	}
-	export class AnalyzeResponse {
-	    questions: Question[];
-	
-	    static createFrom(source: any = {}) {
-	        return new AnalyzeResponse(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.questions = this.convertValues(source["questions"], Question);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

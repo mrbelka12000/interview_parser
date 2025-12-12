@@ -5,8 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/mrbelka12000/interview_parser/internal"
 )
 
 // TranscriptionResult represents the result of transcription and analysis
@@ -39,6 +37,9 @@ func (a *App) SaveAndProcessRecording(filename string) (*TranscriptionResult, er
 // ProcessFileForTranscription handles file upload and processing using the parser logic
 func (a *App) ProcessFileForTranscription(filePath string) (*TranscriptionResult, error) {
 	fmt.Printf("Processing file %s\n", filePath)
+
+	defer os.Remove(filePath)
+
 	// Check if file exists
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		return &TranscriptionResult{
@@ -47,7 +48,7 @@ func (a *App) ProcessFileForTranscription(filePath string) (*TranscriptionResult
 		}, nil
 	}
 
-	apiKey, err := internal.GetOpenAIAPIKeyFromDB(a.cfg)
+	apiKey, err := a.service.GetAPIKey()
 	if err != nil || apiKey == "" {
 		return &TranscriptionResult{
 			Success: false,
@@ -66,7 +67,6 @@ func (a *App) ProcessFileForTranscription(filePath string) (*TranscriptionResult
 	// Generate unique output paths for this transcription
 	baseName := strings.TrimSuffix(filepath.Base(filePath), filepath.Ext(filePath))
 	transcriptPath := filepath.Join(a.cfg.DefaultTranscriptDir, fmt.Sprintf("%s_transcript_%v.txt", baseName, len(dir)))
-	analyzePath := filepath.Join(a.cfg.DefaultAnalyzeDir, fmt.Sprintf("%s_analysis_%v.md", baseName, len(dir)))
 
 	transcript, err := a.transcribeFile(filePath)
 	if err != nil {
@@ -86,7 +86,7 @@ func (a *App) ProcessFileForTranscription(filePath string) (*TranscriptionResult
 		}, nil
 	}
 
-	err = a.analyzeInterview(analyzePath, transcriptPath, transcript)
+	err = a.analyzeInterview(transcript)
 	if err != nil {
 		return &TranscriptionResult{
 			Message: err.Error(),
@@ -100,6 +100,5 @@ func (a *App) ProcessFileForTranscription(filePath string) (*TranscriptionResult
 		Success:        true,
 		Message:        "File processed successfully",
 		TranscriptPath: transcriptPath,
-		AnalysisPath:   analyzePath,
 	}, nil
 }

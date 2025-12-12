@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/openai/openai-go"
+
+	"github.com/mrbelka12000/interview_parser/internal/models"
 )
 
 type (
@@ -22,10 +24,6 @@ type (
 		Questioner       string  `json:"questioner"`
 		Answerer         string  `json:"answerer"`
 		ReasonUnanswered string  `json:"reason"`
-	}
-
-	CallAnalyzeResponse struct {
-		AnalysisText string `json:"analysis_text"`
 	}
 
 	AnalyzeMockInterviewRequest struct {
@@ -55,11 +53,26 @@ type (
 			VerdictReason   string  `json:"verdict_reason"`
 		} `json:"final_score"`
 	}
+
+	CallResponse struct {
+		MeetingAnalysis struct {
+			KeyTopics []string `json:"key_topics"`
+			Tasks     []struct {
+				Title    string  `json:"title"`
+				Assignee string  `json:"assignee"`
+				Deadline *string `json:"deadline"`
+			} `json:"tasks"`
+			OpenQuestionsAndBlockers []string `json:"open_questions_and_blockers"`
+			NextSteps                []string `json:"next_steps"`
+		} `json:"meeting_analysis"`
+	}
 )
 
-func (c *Client) AnalyzeTranscript(ctx context.Context, text string) (out AnalyzeResponse, err error) {
+func (c *Client) AnalyzeTranscript(ctx context.Context, text string) (out models.AnalyzeInterviewWithQA, err error) {
 	now := time.Now()
 	log.Printf("[i] Analyzing transcript")
+
+	var resp AnalyzeResponse
 
 	res, err := c.cl.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
 		Messages: []openai.ChatCompletionMessageParamUnion{
@@ -72,22 +85,31 @@ func (c *Client) AnalyzeTranscript(ctx context.Context, text string) (out Analyz
 		return out, fmt.Errorf("failed to analyze transcript: %w", err)
 	}
 
-	if err = json.Unmarshal([]byte(res.Choices[0].Message.Content), &out); err != nil {
+	if err = json.Unmarshal([]byte(res.Choices[0].Message.Content), &resp); err != nil {
 		return out, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	for _, q := range resp.Questions {
+		out.QA = append(out.QA, models.QuestionAnswer{
+			Question:         q.Question,
+			FullAnswer:       q.FullAnswer,
+			Accuracy:         q.Accuracy,
+			ReasonUnanswered: q.ReasonUnanswered,
+		})
 	}
 
 	log.Printf("[i] Finished analyzing transcript, seconds spent: %v", time.Since(now).Seconds())
 	return out, nil
 }
 
-func (c *Client) AnalyzeCall(ctx context.Context, text string) (out CallAnalyzeResponse, err error) {
+func (c *Client) AnalyzeCall(ctx context.Context, transcript string) (out *models.Call, err error) {
 	now := time.Now()
 	log.Printf("[i] Analyzing call transcript")
 
 	res, err := c.cl.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
 		Messages: []openai.ChatCompletionMessageParamUnion{
 			openai.SystemMessage(promptCallAnalyze),
-			openai.UserMessage(text),
+			openai.UserMessage(transcript),
 		},
 		Model: c.cfg.GPTClassifyQuestionsModel,
 	})
@@ -95,10 +117,22 @@ func (c *Client) AnalyzeCall(ctx context.Context, text string) (out CallAnalyzeR
 		return out, fmt.Errorf("failed to analyze call: %w", err)
 	}
 
-	out.AnalysisText = res.Choices[0].Message.Content
+	var resp CallResponse
+	if err = json.Unmarshal([]byte(res.Choices[0].Message.Content), &resp); err != nil {
+		return out, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
 
 	log.Printf("[i] Finished analyzing call, seconds spent: %v", time.Since(now).Seconds())
-	return out, nil
+
+	body, err := json.Marshal(resp.MeetingAnalysis)
+	if err != nil {
+		return out, fmt.Errorf("failed to marshal response: %w", err)
+	}
+
+	return &models.Call{
+		Transcript: transcript,
+		Analysis:   body,
+	}, nil
 }
 
 func (c *Client) AnalyzeMockInterview(ctx context.Context, req AnalyzeMockInterviewRequest) (out AnalyzeMockInterviewResponse, err error) {

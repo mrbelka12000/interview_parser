@@ -10,9 +10,9 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 
-	"github.com/mrbelka12000/interview_parser/internal"
 	"github.com/mrbelka12000/interview_parser/internal/app"
 	"github.com/mrbelka12000/interview_parser/internal/config"
+	"github.com/mrbelka12000/interview_parser/internal/repo"
 )
 
 //go:embed all:frontend/dist
@@ -25,8 +25,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	apiKey, err := internal.GetOpenAIAPIKeyFromDB(cfg)
-	if err != nil && !errors.Is(err, internal.ErrNoKey) {
+	if err := repo.InitDB(cfg); err != nil {
+		fmt.Println("db init error", err)
+		os.Exit(1)
+	}
+
+	apiKey, err := repo.NewApiKeyRepo().GetOpenAIAPIKeyFromDB()
+	if err != nil && !errors.Is(err, repo.ErrNoKey) {
 		fmt.Printf("error getting open AI api key: %v\n", err)
 		os.Exit(1)
 	}

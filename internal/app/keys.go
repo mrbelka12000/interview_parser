@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/mrbelka12000/interview_parser/internal"
 	"github.com/mrbelka12000/interview_parser/internal/client"
+	"github.com/mrbelka12000/interview_parser/internal/repo"
 )
 
 // APIKeyResult represents the result of API key operations
@@ -19,9 +19,9 @@ type APIKeyResult struct {
 
 // GetOpenAIAPIKey retrieves the current OpenAI API key from database
 func (a *App) GetOpenAIAPIKey() (*APIKeyResult, error) {
-	apiKey, err := internal.GetOpenAIAPIKeyFromDB(a.cfg)
+	apiKey, err := a.service.GetAPIKey()
 	if err != nil {
-		if errors.Is(err, internal.ErrNoKey) {
+		if errors.Is(err, repo.ErrNoKey) {
 			return &APIKeyResult{
 				Success: false,
 				Message: "No API key found in database",
@@ -69,7 +69,7 @@ func (a *App) SaveOpenAIAPIKey(apiKey string) (*APIKeyResult, error) {
 	}
 
 	// Save to database
-	err = internal.InsertOpenAIAPIKey(&tmpCfg)
+	err = a.service.InsertAPIKey(tmpCfg.OpenAIAPIKey)
 	if err != nil {
 		return &APIKeyResult{
 			Success: false,
@@ -90,7 +90,7 @@ func (a *App) SaveOpenAIAPIKey(apiKey string) (*APIKeyResult, error) {
 
 // DeleteOpenAIAPIKey removes the OpenAI API key from database
 func (a *App) DeleteOpenAIAPIKey() (*APIKeyResult, error) {
-	err := internal.DeleteOpenAIAPIKey(a.cfg)
+	err := a.service.DeleteAPIKey()
 	if err != nil {
 		return &APIKeyResult{
 			Success: false,

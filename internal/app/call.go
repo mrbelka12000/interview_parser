@@ -8,8 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/mrbelka12000/interview_parser/internal"
 )
 
 // CallAnalysisResult represents the result of call analysis
@@ -42,6 +40,8 @@ func (a *App) SaveAndProcessRecordingForCall(filename string) (*CallAnalysisResu
 func (a *App) ProcessFileForCallAnalysis(filePath string) (*CallAnalysisResult, error) {
 	fmt.Printf("Processing file for call analysis %s\n", filePath)
 
+	defer os.Remove(filePath)
+	
 	// Check if file exists
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		return &CallAnalysisResult{
@@ -50,7 +50,7 @@ func (a *App) ProcessFileForCallAnalysis(filePath string) (*CallAnalysisResult, 
 		}, nil
 	}
 
-	apiKey, err := internal.GetOpenAIAPIKeyFromDB(a.cfg)
+	apiKey, err := a.service.GetAPIKey()
 	if err != nil || apiKey == "" {
 		return &CallAnalysisResult{
 			Success: false,
@@ -85,7 +85,7 @@ func (a *App) ProcessFileForCallAnalysis(filePath string) (*CallAnalysisResult, 
 		}, nil
 	}
 
-	err = a.analyzeCall(analysisCallPath, transcript)
+	err = a.analyzeCall(transcript)
 	if err != nil {
 		return &CallAnalysisResult{
 			Message: err.Error(),

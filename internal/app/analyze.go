@@ -5,10 +5,10 @@ import (
 	"log"
 	"sync"
 
-	"github.com/mrbelka12000/interview_parser/internal/client"
+	"github.com/mrbelka12000/interview_parser/internal/models"
 )
 
-func (a *App) analyzeInterview(analyzePath, transcriptPath, transcript string) error {
+func (a *App) analyzeInterview(transcript string) error {
 	a.sendProgress(78, "Starting analyzing...", "Analyzing transcripts...")
 	var (
 		wg        sync.WaitGroup
@@ -18,7 +18,7 @@ func (a *App) analyzeInterview(analyzePath, transcriptPath, transcript string) e
 	)
 
 	transcriptBatches := a.parser.BatchTranscript(transcript)
-	analyzeRespBatches := make([][]client.Question, len(transcriptBatches))
+	analyzeRespBatches := make([][]models.QuestionAnswer, len(transcriptBatches))
 
 	for i, batch := range transcriptBatches {
 		wg.Add(1)
@@ -36,7 +36,7 @@ func (a *App) analyzeInterview(analyzePath, transcriptPath, transcript string) e
 			}
 
 			mx.Lock()
-			analyzeRespBatches[ind] = analyzeRespTmp.Questions
+			analyzeRespBatches[ind] = analyzeRespTmp.QA
 			completed++
 			progress := 85 + int(float64(completed)/float64(len(transcriptBatches))*10) // 85% to 95%
 
@@ -49,43 +49,31 @@ func (a *App) analyzeInterview(analyzePath, transcriptPath, transcript string) e
 	wg.Wait()
 	close(workers)
 
-	var analyzeResp client.AnalyzeResponse
+	var analyzeResp models.AnalyzeInterviewWithQA
 	for _, batch := range analyzeRespBatches {
-		analyzeResp.Questions = append(analyzeResp.Questions, batch...)
+		analyzeResp.QA = append(analyzeResp.QA, batch...)
 	}
 
 	// Step 6: Save analysis response
 	a.sendProgress(97, "Saving analysis...", "Writing analysis file...")
-	if err := a.parser.SaveAnalyzeResponse(analyzePath, analyzeResp); err != nil {
+	if _, err := a.service.SaveInterview(&analyzeResp); err != nil {
 		return fmt.Errorf("failed to save analysis: %w", err)
-	}
-
-	// Step 7: Calculate and save analytics
-	a.sendProgress(98, "Calculating analytics...", "Computing interview analytics...")
-	analytics, err := a.CalculateAnalytics(analyzeResp, transcriptPath, analyzePath)
-	if err != nil {
-		return fmt.Errorf("failed to calculate analytics: %w", err)
-	}
-
-	if err := a.SaveAnalytics(analytics); err != nil {
-		return fmt.Errorf("failed to save analytics: %w", err)
 	}
 
 	return nil
 }
 
-func (a *App) analyzeCall(analysisCallPath, transcript string) error {
+func (a *App) analyzeCall(transcript string) error {
 	a.sendProgress(75, "Analyzing call...", "Analyzing meeting content...")
-	analyzeResp, err := a.aiClient.AnalyzeCall(a.ctx, transcript)
+	analyzeCallResp, err := a.aiClient.AnalyzeCall(a.ctx, transcript)
 	if err != nil {
 		return fmt.Errorf("faield to analyze call: %w", err)
 	}
 
 	// Step 5: Save analysis response
 	a.sendProgress(90, "Saving analysis...", "Writing analysis file...")
-	if err = a.parser.SaveCallAnalysis(analysisCallPath, analyzeResp.AnalysisText); err != nil {
-		return fmt.Errorf("failed to save analysis: %w", err)
+	if err = a.service.SaveCall(analyzeCallResp); err != nil {
+		return fmt.Errorf("failed to save call: %w", err)
 	}
-
 	return nil
 }

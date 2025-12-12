@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"sync"
 )
@@ -47,8 +48,8 @@ func (a *App) transcribeFile(filePath string) (string, error) {
 			mx.Lock()
 			collectedText[ind] = textFromChunk
 			completed++
-			// Update progress based on completed chunks
 			progress := 25 + int(float64(completed)/float64(len(chunks))*35) // 25% to 60%
+			os.Remove(chunkVar)
 			a.sendProgress(progress, "Processing chunks...", fmt.Sprintf("Processed %d/%d audio segments...", completed, len(chunks)))
 			mx.Unlock()
 

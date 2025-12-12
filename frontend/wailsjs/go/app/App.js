@@ -10,10 +10,6 @@ export function DeleteOpenAIAPIKey() {
   return window['go']['app']['App']['DeleteOpenAIAPIKey']();
 }
 
-export function GetAllInterviewAnalytics(arg1) {
-  return window['go']['app']['App']['GetAllInterviewAnalytics'](arg1);
-}
-
 export function GetAllInterviewAnalyticsAPI(arg1, arg2, arg3, arg4) {
   return window['go']['app']['App']['GetAllInterviewAnalyticsAPI'](arg1, arg2, arg3, arg4);
 }
@@ -26,20 +22,12 @@ export function GetFilesInDirectory(arg1) {
   return window['go']['app']['App']['GetFilesInDirectory'](arg1);
 }
 
-export function GetGlobalAnalytics(arg1) {
-  return window['go']['app']['App']['GetGlobalAnalytics'](arg1);
-}
-
 export function GetGlobalAnalyticsAPI(arg1, arg2, arg3, arg4) {
   return window['go']['app']['App']['GetGlobalAnalyticsAPI'](arg1, arg2, arg3, arg4);
 }
 
 export function GetInputDevices() {
   return window['go']['app']['App']['GetInputDevices']();
-}
-
-export function GetInterviewAnalytics(arg1) {
-  return window['go']['app']['App']['GetInterviewAnalytics'](arg1);
 }
 
 export function GetInterviewAnalyticsAPI(arg1) {
@@ -80,10 +68,6 @@ export function ProcessFileForTranscription(arg1) {
 
 export function ReadFileContent(arg1) {
   return window['go']['app']['App']['ReadFileContent'](arg1);
-}
-
-export function SaveAnalytics(arg1) {
-  return window['go']['app']['App']['SaveAnalytics'](arg1);
 }
 
 export function SaveAndProcessRecording(arg1) {

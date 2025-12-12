@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -29,7 +28,6 @@ func (p *Parser) FormatText(text string) string {
 }
 
 func (p *Parser) BatchTranscript(text string) []string {
-	fmt.Println(text)
 	lines := strings.Split(text, "\n")
 	var (
 		out           []string
