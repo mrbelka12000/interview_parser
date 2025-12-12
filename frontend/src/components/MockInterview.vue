@@ -489,7 +489,7 @@ const handleInterviewEnd = () => {
   interviewSummary.value = {
     specialization: interviewSetup.value.specialization,
     level: interviewSetup.value.level,
-    questionsAsked: messages.value.filter(m => m.isQuestion).length,
+    questionsAsked: interviewSetup.value.questionsCount,
     duration: interviewDuration.value
   }
 
