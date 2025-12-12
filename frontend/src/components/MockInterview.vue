@@ -3,34 +3,31 @@
     <div class="interview-container">
       <h2>🎯 Mock Interview Session</h2>
       <p class="description">
-        Practice your interview skills with AI-generated questions tailored to your target position.
+        Practice your interview skills with AI-generated questions tailored to your CV and target position.
       </p>
 
       <!-- Interview Setup Form -->
       <div v-if="!interviewStarted" class="setup-form">
         <div class="form-group">
-          <label for="job-title">Job Title:</label>
-          <input
-            id="job-title"
-            v-model="interviewSetup.jobTitle"
-            type="text"
-            placeholder="e.g., Senior Software Engineer"
-            class="form-input"
-          />
+          <label for="cv">Your CV:</label>
+          <textarea
+            id="cv"
+            v-model="interviewSetup.cv"
+            placeholder="Paste your CV or resume here..."
+            class="form-textarea"
+            rows="6"
+          ></textarea>
         </div>
 
         <div class="form-group">
-          <label for="experience">Experience Level:</label>
-          <select
-            id="experience"
-            v-model="interviewSetup.experience"
-            class="form-select"
-          >
-            <option value="Entry Level">Entry Level (0-2 years)</option>
-            <option value="Mid Level">Mid Level (2-5 years)</option>
-            <option value="Senior Level">Senior Level (5-10 years)</option>
-            <option value="Lead/Principal">Lead/Principal (10+ years)</option>
-          </select>
+          <label for="vacancy-info">Vacancy Information:</label>
+          <textarea
+            id="vacancy-info"
+            v-model="interviewSetup.vacancyInfo"
+            placeholder="Paste the job description or vacancy information here..."
+            class="form-textarea"
+            rows="6"
+          ></textarea>
         </div>
 
         <div class="form-group">
@@ -45,10 +42,37 @@
         </div>
 
         <div class="form-group">
-          <label for="context">Additional Context:</label>
+          <label for="level">Experience Level:</label>
+          <select
+            id="level"
+            v-model="interviewSetup.level"
+            class="form-select"
+          >
+            <option value="Junior">Junior (0-2 years)</option>
+            <option value="Middle">Middle (2-5 years)</option>
+            <option value="Senior">Senior (5-10 years)</option>
+            <option value="Lead">Lead/Principal (10+ years)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="questions-count">Number of Questions:</label>
+          <select
+            id="questions-count"
+            v-model="interviewSetup.questionsCount"
+            class="form-select"
+          >
+            <option :value="5">5 Questions</option>
+            <option :value="10">10 Questions</option>
+            <option :value="15">15 Questions</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="meta">Additional Context:</label>
           <textarea
-            id="context"
-            v-model="interviewSetup.context"
+            id="meta"
+            v-model="interviewSetup.meta"
             placeholder="Any specific technologies, projects, or areas you'd like to focus on..."
             class="form-textarea"
             rows="4"
@@ -82,6 +106,31 @@
           </button>
         </div>
 
+        <!-- Analytics Panel -->
+        <div v-if="analytics.length > 0" class="analytics-panel">
+          <h3>📊 Answer Analytics</h3>
+          <div class="analytics-grid">
+            <div
+              v-for="analytic in analytics"
+              :key="analytic.question_index"
+              class="analytics-card"
+            >
+              <div class="analytics-header">
+                <span class="question-number">Q{{ analytic.question_index + 1 }}</span>
+                <span class="category">{{ analytic.category }}</span>
+                <span :class="['accuracy', getAccuracyClass(analytic.accuracy)]">
+                  {{ Math.round(analytic.accuracy * 100) }}%
+                </span>
+              </div>
+              <div class="analytics-content">
+                <p class="question">{{ analytic.question }}</p>
+                <p class="answer">{{ analytic.answer.substring(0, 100) }}...</p>
+                <p class="feedback">{{ analytic.feedback }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Chat Messages -->
         <div class="chat-container" ref="chatContainer">
           <div
@@ -92,7 +141,7 @@
             <div class="message-content">
               <div class="message-header">
                 <span class="sender">
-                  {{ message.isFromAI ? '🤖 Interviewer' : '👤 AI' }}
+                  {{ message.isFromAI ?  '👤 You' : '🤖 Interviewer'  }}
                 </span>
                 <span class="timestamp">{{ formatTime(message.timestamp) }}</span>
               </div>
@@ -162,9 +211,15 @@
       <div v-if="interviewEnded && interviewSummary" class="interview-summary">
         <h3>📊 Interview Summary</h3>
         <div class="summary-content">
-          <p><strong>Position:</strong> {{ interviewSetup.jobTitle }}</p>
+          <p><strong>Specialization:</strong> {{ interviewSetup.specialization }}</p>
+          <p><strong>Level:</strong> {{ interviewSetup.level }}</p>
           <p><strong>Questions Asked:</strong> {{ messages.filter(m => m.isQuestion).length }}</p>
           <p><strong>Duration:</strong> {{ interviewDuration }}</p>
+          <div v-if="analytics.length > 0" class="final-analytics">
+            <h4>📈 Performance Overview</h4>
+            <p><strong>Average Accuracy:</strong> {{ Math.round(averageAccuracy * 100) }}%</p>
+            <p><strong>Questions Answered:</strong> {{ analytics.length }}/{{ interviewSetup.questionsCount }}</p>
+          </div>
           <div class="summary-actions">
             <button @click="restartInterview" class="restart-button">
               🔄 Start New Interview
@@ -181,10 +236,12 @@ import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { GetWebSocketURL } from '../../wailsjs/go/app/App'
 
 const interviewSetup = ref({
-  jobTitle: '',
-  experience: 'Mid Level',
+  cv: '',
+  vacancyInfo: '',
   specialization: '',
-  context: ''
+  level: 'Middle',
+  meta: '',
+  questionsCount: 10
 })
 
 const interviewStarted = ref(false)
@@ -198,6 +255,7 @@ const interviewStartTime = ref(null)
 const messages = ref([])
 const userInput = ref('')
 const isTyping = ref(false)
+const analytics = ref([])
 
 const ws = ref(null)
 const chatContainer = ref(null)
@@ -208,14 +266,28 @@ const recordingDuration = ref(0)
 const recordingTimer = ref(null)
 const audioChunks = ref([])
 
+const averageAccuracy = computed(() => {
+  if (analytics.value.length === 0) return 0
+  const sum = analytics.value.reduce((acc, curr) => acc + curr.accuracy, 0)
+  return sum / analytics.value.length
+})
+
 const isSetupValid = computed(() => {
-  return interviewSetup.value.jobTitle.trim() !== '' && 
-         interviewSetup.value.experience !== '' &&
-         interviewSetup.value.specialization.trim() !== ''
+  return interviewSetup.value.cv.trim() !== '' && 
+         interviewSetup.value.vacancyInfo.trim() !== '' &&
+         interviewSetup.value.specialization.trim() !== '' &&
+         interviewSetup.value.level !== '' &&
+         interviewSetup.value.questionsCount > 0
 })
 
 const formatTime = (timestamp) => {
   return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+const getAccuracyClass = (accuracy) => {
+  if (accuracy >= 0.8) return 'high'
+  if (accuracy >= 0.6) return 'medium'
+  return 'low'
 }
 
 const scrollToBottom = () => {
@@ -241,14 +313,16 @@ const startInterview = async () => {
       interviewStarted.value = true
       interviewStartTime.value = new Date()
       
-      // Send interview setup
+      // Send interview setup with new structure
       ws.value.send(JSON.stringify({
         type: 'start',
         data: {
-          job_title: interviewSetup.value.jobTitle,
-          experience: interviewSetup.value.experience,
+          cv: interviewSetup.value.cv,
+          vacancy_info: interviewSetup.value.vacancyInfo,
           specialization: interviewSetup.value.specialization,
-          context: interviewSetup.value.context
+          level: interviewSetup.value.level,
+          meta: interviewSetup.value.meta,
+          questions_count: interviewSetup.value.questionsCount
         }
       }))
     }
@@ -286,11 +360,17 @@ const handleMessage = (message) => {
       if (message.data) {
         messages.value.push({
           text: message.data.text,
-          isFromAI: message.data.isFrom_ai,
-          isQuestion: message.data.is_question,
+          isFromAI: message.data.isFromAI,
+          isQuestion: message.data.isQuestion,
           timestamp: new Date().toISOString()
         })
         scrollToBottom()
+      }
+      break
+      
+    case 'analytics':
+      if (message.data) {
+        analytics.value.push(message.data)
       }
       break
       
@@ -362,7 +442,8 @@ const handleInterviewEnd = () => {
   }
   
   interviewSummary.value = {
-    position: interviewSetup.value.jobTitle,
+    specialization: interviewSetup.value.specialization,
+    level: interviewSetup.value.level,
     questionsAsked: messages.value.filter(m => m.isQuestion).length,
     duration: interviewDuration.value
   }
@@ -387,13 +468,16 @@ const restartInterview = () => {
   messages.value = []
   userInput.value = ''
   isTyping.value = false
+  analytics.value = []
   
   // Reset interview setup
   interviewSetup.value = {
-    jobTitle: '',
-    experience: 'Mid Level',
+    cv: '',
+    vacancyInfo: '',
     specialization: '',
-    context: ''
+    level: 'Middle',
+    meta: '',
+    questionsCount: 10
   }
 }
 
@@ -486,7 +570,7 @@ onUnmounted(() => {
 
 <style scoped>
 .mock-interview {
-  max-width: 900px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
 }
@@ -512,7 +596,7 @@ h2 {
 
 /* Setup Form */
 .setup-form {
-  max-width: 500px;
+  max-width: 600px;
   margin: 0 auto;
 }
 
@@ -548,6 +632,7 @@ h2 {
 .form-textarea {
   resize: vertical;
   min-height: 100px;
+  font-family: inherit;
 }
 
 .start-button {
@@ -615,6 +700,96 @@ h2 {
   cursor: pointer;
 }
 
+/* Analytics Panel */
+.analytics-panel {
+  margin-bottom: 20px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 2px solid #e9ecef;
+}
+
+.analytics-panel h3 {
+  margin: 0 0 15px 0;
+  color: #333;
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 15px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.analytics-card {
+  background: white;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.analytics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.question-number {
+  font-weight: 600;
+  color: #667eea;
+}
+
+.category {
+  background: #667eea;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.accuracy {
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.accuracy.high {
+  background: #28a745;
+  color: white;
+}
+
+.accuracy.medium {
+  background: #ffc107;
+  color: #212529;
+}
+
+.accuracy.low {
+  background: #dc3545;
+  color: white;
+}
+
+.analytics-content {
+  font-size: 12px;
+}
+
+.analytics-content .question {
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.analytics-content .answer {
+  color: #666;
+  margin-bottom: 5px;
+}
+
+.analytics-content .feedback {
+  color: #28a745;
+  font-style: italic;
+}
+
 /* Chat Container */
 .chat-container {
   height: 400px;
@@ -629,7 +804,6 @@ h2 {
 .message {
   margin-bottom: 20px;
   display: flex;
-  align-items: flex-start;
 }
 
 .ai-message {
@@ -867,6 +1041,17 @@ h2 {
   font-size: 16px;
 }
 
+.final-analytics {
+  margin: 20px 0;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+.final-analytics h4 {
+  margin: 0 0 10px 0;
+}
+
 .summary-actions {
   margin-top: 20px;
 }
@@ -935,6 +1120,10 @@ h2 {
   .input-actions {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .analytics-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

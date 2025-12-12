@@ -11,6 +11,7 @@ type Config struct {
 	ChunkSeconds              int
 	GPTTranscribeModel        string
 	GPTClassifyQuestionsModel string
+	GPTGenerateQuestionsModel string
 	DBPath                    string
 	LoadChunks                bool
 	ChunksDir                 string
@@ -38,6 +39,7 @@ const (
 	defaultChunksSeconds             = 100
 	defaultOutputName                = "analytics.md"
 	defaultGPTClassifyQuestionsModel = "o3"
+	defaultGPTGenerateQuestionsModel = "gpt-4.1"
 	defaultGPTTranscribeModels       = "gpt-4o-transcribe"
 	defaultLoadChunks                = false
 	defaultAudioSampleRate           = 48000
@@ -65,6 +67,7 @@ func ParseConfig() *Config {
 		ChunkSeconds:              defaultChunksSeconds,
 		GPTTranscribeModel:        defaultGPTTranscribeModels,
 		GPTClassifyQuestionsModel: defaultGPTClassifyQuestionsModel,
+		GPTGenerateQuestionsModel: defaultGPTGenerateQuestionsModel,
 		LoadChunks:                defaultLoadChunks,
 		ParallelWorkers:           runtime.NumCPU(),
 		Language:                  "ru",

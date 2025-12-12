@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -24,6 +25,7 @@ const (
 	MessageTypeTranscribe MessageType = "transcribe"
 	MessageTypeError      MessageType = "error"
 	MessageTypeEnd        MessageType = "end"
+	MessageTypeAnalytics  MessageType = "analytics"
 )
 
 // WSMessage represents a WebSocket message
@@ -35,10 +37,12 @@ type WSMessage struct {
 
 // StartMessage represents interview start request
 type StartMessage struct {
-	JobTitle       string `json:"job_title"`
-	Experience     string `json:"experience"`
+	CV             string `json:"cv"`
+	VacancyInfo    string `json:"vacancy_info"`
 	Specialization string `json:"specialization"`
-	Context        string `json:"context"`
+	Level          string `json:"level"`
+	Meta           string `json:"meta"`
+	QuestionsCount int    `json:"questions_count"`
 }
 
 // ResponseMessage represents a response (user answer or AI question)
@@ -55,16 +59,32 @@ type AudioMessage struct {
 	Format    string `json:"format"`
 }
 
+// AnalyticsMessage represents analytics data
+type AnalyticsMessage struct {
+	QuestionIndex int     `json:"question_index"`
+	Question      string  `json:"question"`
+	Answer        string  `json:"answer"`
+	Category      string  `json:"category"`
+	Accuracy      float64 `json:"accuracy"`
+	Feedback      string  `json:"feedback"`
+}
+
 // InterviewSession manages a single mock interview session
 type InterviewSession struct {
-	conn         *websocket.Conn
-	aiClient     *client.Client
-	isActive     bool
-	currentIndex int
-	questions    []string
-	context      string
-	jobTitle     string
-	mutex        sync.RWMutex
+	conn           *websocket.Conn
+	aiClient       *client.Client
+	isActive       bool
+	currentIndex   int
+	questions      []client.GeneratedQuestion
+	answers        []string
+	context        string
+	cv             string
+	vacancyInfo    string
+	specialization string
+	level          string
+	meta           string
+	startTime      time.Time
+	mutex          sync.RWMutex
 }
 
 var (
@@ -87,7 +107,7 @@ func (s *InterviewSession) handleConnection() {
 	welcomeMsg := WSMessage{
 		Type: MessageTypeResponse,
 		Data: ResponseMessage{
-			Text:      "Welcome to your mock interview! Please provide the job details and context to begin.",
+			Text:      "Welcome to your mock interview! I'm generating personalized questions based on your CV and the vacancy information.",
 			Timestamp: time.Now(),
 			IsFromAI:  true,
 		},
@@ -149,11 +169,15 @@ func (s *InterviewSession) handleStartMessage(msg WSMessage) {
 	}
 
 	s.mutex.Lock()
-	s.context = startMsg.Context
-	s.jobTitle = startMsg.JobTitle
+	s.cv = startMsg.CV
+	s.vacancyInfo = startMsg.VacancyInfo
+	s.specialization = startMsg.Specialization
+	s.level = startMsg.Level
+	s.meta = startMsg.Meta
+	s.startTime = time.Now()
 	s.mutex.Unlock()
 
-	// Generate interview questions based on context
+	// Generate interview questions based on provided data
 	go s.generateQuestions(startMsg)
 }
 
@@ -163,22 +187,57 @@ func (s *InterviewSession) generateQuestions(startMsg StartMessage) {
 		return
 	}
 
-	// For now, using placeholder questions
-	// TODO: Integrate with actual GPT client when available
-	questions := []string{
-		"Can you tell me about your experience with this technology stack?",
-		"Describe a challenging project you've worked on recently.",
-		"How do you approach problem-solving when faced with unknown requirements?",
-		"What's your experience with team collaboration and communication?",
-		"Where do you see yourself professionally in the next 2-3 years?",
+	// Send generating message
+	generatingMsg := WSMessage{
+		Type: MessageTypeResponse,
+		Data: ResponseMessage{
+			Text:      "🤔 Generating personalized interview questions based on your CV and the vacancy...",
+			Timestamp: time.Now(),
+			IsFromAI:  true,
+		},
+		Timestamp: time.Now(),
+	}
+	s.sendMessage(generatingMsg)
+
+	// Create mock interview request
+	req := client.MockInterviewRequest{
+		CV:             startMsg.CV,
+		VacancyInfo:    startMsg.VacancyInfo,
+		Specialization: startMsg.Specialization,
+		Level:          startMsg.Level,
+		Meta:           startMsg.Meta,
+		QuestionsCount: startMsg.QuestionsCount,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	response, err := s.aiClient.GetMockInterviewQuestions(ctx, req)
+	if err != nil {
+		s.sendError(fmt.Sprintf("Failed to generate questions: %v", err))
+		return
 	}
 
 	s.mutex.Lock()
-	s.questions = questions
+	s.questions = response.GeneratedQuestions
+	s.answers = make([]string, len(response.GeneratedQuestions))
 	s.currentIndex = 0
 	s.mutex.Unlock()
 
-	// Send first question
+	// Send vacancy summary
+	summaryMsg := WSMessage{
+		Type: MessageTypeResponse,
+		Data: ResponseMessage{
+			Text:      fmt.Sprintf("📋 Vacancy Summary: %s", response.VacancySummary),
+			Timestamp: time.Now(),
+			IsFromAI:  true,
+		},
+		Timestamp: time.Now(),
+	}
+	s.sendMessage(summaryMsg)
+
+	// Brief delay then send first question
+	time.Sleep(2 * time.Second)
 	s.sendNextQuestion()
 }
 
@@ -196,7 +255,7 @@ func (s *InterviewSession) sendNextQuestion() {
 	response := WSMessage{
 		Type: MessageTypeResponse,
 		Data: ResponseMessage{
-			Text:       fmt.Sprintf("Question %d: %s", s.currentIndex+1, question),
+			Text:       fmt.Sprintf("Question %d (%s): %s", s.currentIndex+1, question.Category, question.Question),
 			Timestamp:  time.Now(),
 			IsFromAI:   true,
 			IsQuestion: true,
@@ -208,28 +267,73 @@ func (s *InterviewSession) sendNextQuestion() {
 }
 
 func (s *InterviewSession) handleResponseMessage(msg WSMessage) {
+	body, _ := json.Marshal(msg.Data)
+
 	var responseMsg ResponseMessage
-	if err := json.Unmarshal(msg.Data.([]byte), &responseMsg); err != nil {
+	if err := json.Unmarshal(body, &responseMsg); err != nil {
 		s.sendError("Invalid response message format")
 		return
 	}
 
-	// Store the user's response (you could save this for analysis)
-	log.Printf("User response: %s", responseMsg.Text)
+	// Store the user's response
+	s.mutex.Lock()
+	if s.currentIndex < len(s.answers) {
+		s.answers[s.currentIndex] = responseMsg.Text
+	}
+	currentIdx := s.currentIndex
+	s.mutex.Unlock()
 
-	// Move to next question
+	log.Printf("User response for question %d: %s", currentIdx+1, responseMsg.Text)
+
+	// Send user's response back to chat (so it appears on the right side)
+	userResponse := WSMessage{
+		Type: MessageTypeResponse,
+		Data: ResponseMessage{
+			Text:      responseMsg.Text,
+			Timestamp: time.Now(),
+			IsFromAI:  false,
+		},
+		Timestamp: time.Now(),
+	}
+	s.sendMessage(userResponse)
+
+	// Generate analytics for this answer
+	go s.generateAnswerAnalytics(currentIdx)
+
+	// Move to next question after a brief delay
+	time.Sleep(1 * time.Second)
+
 	s.mutex.Lock()
 	s.currentIndex++
 	s.mutex.Unlock()
 
-	// Send next question after a brief delay
+	// Send next question
 	time.Sleep(1 * time.Second)
 	s.sendNextQuestion()
 }
 
+func (s *InterviewSession) generateAnswerAnalytics(questionIndex int) {
+	s.mutex.RLock()
+	if questionIndex >= len(s.questions) || questionIndex >= len(s.answers) {
+		s.mutex.RUnlock()
+		return
+	}
+
+	s.mutex.RUnlock()
+
+	// Send analytics to frontend
+	analyticsMsg := WSMessage{
+		Type:      MessageTypeAnalytics,
+		Timestamp: time.Now(),
+	}
+	s.sendMessage(analyticsMsg)
+}
+
 func (s *InterviewSession) handleAudioMessage(msg WSMessage) {
+	body, _ := json.Marshal(msg.Data)
+
 	var audioMsg AudioMessage
-	if err := json.Unmarshal(msg.Data.([]byte), &audioMsg); err != nil {
+	if err := json.Unmarshal(body, &audioMsg); err != nil {
 		s.sendError("Invalid audio message format")
 		return
 	}
@@ -239,8 +343,9 @@ func (s *InterviewSession) handleAudioMessage(msg WSMessage) {
 }
 
 func (s *InterviewSession) handleTranscribeMessage(msg WSMessage) {
+	body, _ := json.Marshal(msg.Data)
 	var audioMsg AudioMessage
-	if err := json.Unmarshal(msg.Data.([]byte), &audioMsg); err != nil {
+	if err := json.Unmarshal(body, &audioMsg); err != nil {
 		s.sendError("Invalid transcribe message format")
 		return
 	}
@@ -254,15 +359,28 @@ func (s *InterviewSession) transcribeAudio(audioData []byte) {
 		return
 	}
 
-	// For now, simulate transcription
-	// In a real implementation, you'd use your existing transcription functionality
-	transcribedText := "[Audio transcription would appear here]"
+	// Send transcribing message
+	transcribingMsg := WSMessage{
+		Type: MessageTypeResponse,
+		Data: ResponseMessage{
+			Text:      "🎙️ Transcribing your audio response...",
+			Timestamp: time.Now(),
+			IsFromAI:  true,
+		},
+		Timestamp: time.Now(),
+	}
+	s.sendMessage(transcribingMsg)
 
-	// Send transcription confirmation
+	// In a real implementation, you'd use your existing transcription functionality
+	// For now, simulate transcription
+	time.Sleep(2 * time.Second)
+	transcribedText := "[Audio transcription would appear here - this would be the actual transcribed text from the audio]"
+
+	// Send transcribed text as user response
 	response := WSMessage{
 		Type: MessageTypeResponse,
 		Data: ResponseMessage{
-			Text:      fmt.Sprintf("🎤 Transcribed: %s", transcribedText),
+			Text:      transcribedText,
 			Timestamp: time.Now(),
 			IsFromAI:  false,
 		},
@@ -271,8 +389,11 @@ func (s *InterviewSession) transcribeAudio(audioData []byte) {
 
 	s.sendMessage(response)
 
-	// Move to next question
+	// Store the answer and move to next question
 	s.mutex.Lock()
+	if s.currentIndex < len(s.answers) {
+		s.answers[s.currentIndex] = transcribedText
+	}
 	s.currentIndex++
 	s.mutex.Unlock()
 
@@ -286,10 +407,13 @@ func (s *InterviewSession) handleEndMessage() {
 }
 
 func (s *InterviewSession) endInterview() {
+	// Generate final analytics
+	s.generateFinalAnalytics()
+
 	endMsg := WSMessage{
 		Type: MessageTypeEnd,
 		Data: ResponseMessage{
-			Text:      "Thank you for completing the mock interview! Your responses have been recorded.",
+			Text:      "Thank you for completing the mock interview! I'm analyzing your responses and will provide detailed feedback.",
 			Timestamp: time.Now(),
 			IsFromAI:  true,
 		},
@@ -298,9 +422,40 @@ func (s *InterviewSession) endInterview() {
 
 	s.sendMessage(endMsg)
 
-	// Close the session after a delay
-	time.Sleep(2 * time.Second)
 	s.close()
+}
+
+func (s *InterviewSession) generateFinalAnalytics() {
+
+	questions := make([]string, len(s.questions))
+	for i, question := range s.questions {
+		questions[i] = question.Question
+	}
+	resp, err := s.aiClient.AnalyzeMockInterview(context.Background(), client.AnalyzeMockInterviewRequest{
+		CV:             s.cv,
+		VacancyInfo:    s.vacancyInfo,
+		Specialization: s.specialization,
+		Level:          s.level,
+		Meta:           s.meta,
+		Questions:      questions,
+		Answers:        s.answers,
+	})
+	if err != nil {
+		s.sendError("Failed to analyze mock interview")
+		return
+	}
+
+	// TODO not send to chat, display on frontend, fix from ai flag
+	summaryMsg := WSMessage{
+		Type: MessageTypeResponse,
+		Data: ResponseMessage{
+			Text:      resp.CandidateSummary,
+			Timestamp: time.Now(),
+			IsFromAI:  true,
+		},
+		Timestamp: time.Now(),
+	}
+	s.sendMessage(summaryMsg)
 }
 
 func (s *InterviewSession) sendMessage(msg WSMessage) {
@@ -351,8 +506,9 @@ func RunServer(cfg *config.Config) error {
 		currentSession = &InterviewSession{
 			conn:         conn,
 			aiClient:     aiClient,
-			questions:    make([]string, 0),
-			currentIndex: -1,
+			questions:    make([]client.GeneratedQuestion, 0),
+			answers:      make([]string, 0),
+			currentIndex: 0,
 			isActive:     true,
 		}
 
