@@ -249,7 +249,7 @@
         <div class="summary-content">
           <p><strong>Specialization:</strong> {{ interviewSetup.specialization }}</p>
           <p><strong>Level:</strong> {{ interviewSetup.level }}</p>
-          <p><strong>Questions Asked:</strong> {{ messages.filter(m => m.isQuestion).length }}</p>
+          <p><strong>Questions Asked:</strong> {{ interviewSetup.questionsCount }}</p>
           <p><strong>Duration:</strong> {{ interviewDuration }}</p>
 
           <div v-if="analytics.length > 0" class="final-analytics">
@@ -269,7 +269,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, computed, onUnmounted, nextTick } from 'vue'
 import { GetWebSocketURL } from '../../wailsjs/go/app/App'
 
 const interviewSetup = ref({
@@ -445,14 +445,7 @@ const sendMessage = () => {
   
   const messageText = userInput.value.trim()
   userInput.value = ''
-  
-  // Add user message to chat
-  messages.value.push({
-    text: messageText,
-    is_from_ai: false,
-    timestamp: new Date().toISOString()
-  })
-  
+
   // Send to WebSocket
   ws.value.send(JSON.stringify({
     type: 'response',

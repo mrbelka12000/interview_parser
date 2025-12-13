@@ -182,90 +182,6 @@ export namespace audiocapture {
 
 export namespace models {
 	
-	export class QuestionAnswer {
-	    id: number;
-	    interview_id: number;
-	    question: string;
-	    full_answer: string;
-	    accuracy: number;
-	    reason_unanswered: string;
-	    // Go type: time
-	    created_at: any;
-	    // Go type: time
-	    updated_at: any;
-	
-	    static createFrom(source: any = {}) {
-	        return new QuestionAnswer(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.interview_id = source["interview_id"];
-	        this.question = source["question"];
-	        this.full_answer = source["full_answer"];
-	        this.accuracy = source["accuracy"];
-	        this.reason_unanswered = source["reason_unanswered"];
-	        this.created_at = this.convertValues(source["created_at"], null);
-	        this.updated_at = this.convertValues(source["updated_at"], null);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	export class AnalyzeInterviewWithQA {
-	    id: number;
-	    qa: QuestionAnswer[];
-	    // Go type: time
-	    created_at: any;
-	    // Go type: time
-	    updated_at: any;
-	
-	    static createFrom(source: any = {}) {
-	        return new AnalyzeInterviewWithQA(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.qa = this.convertValues(source["qa"], QuestionAnswer);
-	        this.created_at = this.convertValues(source["created_at"], null);
-	        this.updated_at = this.convertValues(source["updated_at"], null);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
 	export class GlobalAnalytics {
 	    totalInterviews: number;
 	    totalQuestions: number;
@@ -275,10 +191,8 @@ export namespace models {
 	    globalAverageAccuracy: number;
 	    globalAnsweredAccuracy: number;
 	    bestInterviewID: number;
-	    bestInterviewPath: string;
 	    bestInterviewScore: number;
 	    worstInterviewID: number;
-	    worstInterviewPath: string;
 	    worstInterviewScore: number;
 	    // Go type: time
 	    lastUpdated: any;
@@ -297,10 +211,8 @@ export namespace models {
 	        this.globalAverageAccuracy = source["globalAverageAccuracy"];
 	        this.globalAnsweredAccuracy = source["globalAnsweredAccuracy"];
 	        this.bestInterviewID = source["bestInterviewID"];
-	        this.bestInterviewPath = source["bestInterviewPath"];
 	        this.bestInterviewScore = source["bestInterviewScore"];
 	        this.worstInterviewID = source["worstInterviewID"];
-	        this.worstInterviewPath = source["worstInterviewPath"];
 	        this.worstInterviewScore = source["worstInterviewScore"];
 	        this.lastUpdated = this.convertValues(source["lastUpdated"], null);
 	    }
@@ -325,8 +237,6 @@ export namespace models {
 	}
 	export class InterviewAnalytics {
 	    id: number;
-	    interviewPath: string;
-	    analysisPath: string;
 	    totalQuestions: number;
 	    answeredQuestions: number;
 	    unansweredQuestions: number;
@@ -350,8 +260,6 @@ export namespace models {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
-	        this.interviewPath = source["interviewPath"];
-	        this.analysisPath = source["analysisPath"];
 	        this.totalQuestions = source["totalQuestions"];
 	        this.answeredQuestions = source["answeredQuestions"];
 	        this.unansweredQuestions = source["unansweredQuestions"];
