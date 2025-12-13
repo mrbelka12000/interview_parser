@@ -6,5 +6,3 @@ interview_parser
 build/bin
 node_modules
 frontend/dist
-CLAUDE.md
-.claude

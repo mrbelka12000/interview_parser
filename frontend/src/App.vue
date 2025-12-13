@@ -9,9 +9,10 @@ import Analytics from './components/Analytics.vue'
 import MockInterview from './components/MockInterview.vue'
 import Interviews from './components/Interviews.vue'
 import Calls from './components/Calls.vue'
+import HomePage from './components/HomePage.vue'
 import { ref } from 'vue'
 
-const currentView = ref('explorer')
+const currentView = ref('home')
 const selectedFilePath = ref('')
 
 const switchView = (view) => {
@@ -40,60 +41,11 @@ const backToFileExplorer = () => {
       <img id="logo" alt="Wails logo" src="./assets/images/logo-universal.png"/>
       <nav class="nav-tabs">
         <button
-          @click="switchView('upload')" 
-          :class="{ active: currentView === 'upload' }"
+          @click="switchView('home')" 
+          :class="{ active: currentView === 'home' }"
           class="nav-tab"
         >
-          📤 Upload & Transcribe
-        </button>
-        <button
-          @click="switchView('record')" 
-          :class="{ active: currentView === 'record' }"
-          class="nav-tab"
-        >
-          🎙️ Record Audio
-        </button>
-        <button
-          @click="switchView('interview')"
-          :class="{ active: currentView === 'interview' }"
-          class="nav-tab"
-        >
-          🎯 Mock Interview
-        </button>
-        <button
-          @click="switchView('interviews')"
-          :class="{ active: currentView === 'interviews' }"
-          class="nav-tab"
-        >
-          📋 Interviews
-        </button>
-        <button
-          @click="switchView('calls')"
-          :class="{ active: currentView === 'calls' }"
-          class="nav-tab"
-        >
-          📞 Calls
-        </button>
-        <button
-            @click="switchView('explorer')"
-            :class="{ active: currentView === 'explorer' }"
-            class="nav-tab"
-        >
-          📂 File Explorer
-        </button>
-        <button
-            @click="switchView('analytics')"
-            :class="{ active: currentView === 'analytics' }"
-            class="nav-tab"
-        >
-          📊 Analytics
-        </button>
-        <button
-            @click="switchView('apikey')"
-            :class="{ active: currentView === 'apikey' }"
-            class="nav-tab"
-        >
-          🔑 API Key
+          🏠 Home
         </button>
       </nav>
     </header>
@@ -108,6 +60,10 @@ const backToFileExplorer = () => {
         <span class="breadcrumb-current">File Content</span>
       </div>
       
+      <HomePage 
+        v-if="currentView === 'home'" 
+        @navigate="switchView"
+      />
       <FileExplorer 
         v-if="currentView === 'explorer'" 
         @file-selected="showFileContent" 
