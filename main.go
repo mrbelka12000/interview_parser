@@ -12,7 +12,7 @@ import (
 
 	"github.com/mrbelka12000/interview_parser/internal/app"
 	"github.com/mrbelka12000/interview_parser/internal/config"
-	"github.com/mrbelka12000/interview_parser/internal/repo"
+	"github.com/mrbelka12000/interview_parser/internal/repo/postgres"
 )
 
 //go:embed all:frontend/dist
@@ -25,13 +25,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := repo.InitDB(cfg); err != nil {
-		fmt.Println("db init error", err)
-		os.Exit(1)
+	switch {
+
 	}
 
-	apiKey, err := repo.NewApiKeyRepo().GetOpenAIAPIKeyFromDB()
-	if err != nil && !errors.Is(err, repo.ErrNoKey) {
+	apiKey, err := postgres.NewApiKeyRepo().GetOpenAIAPIKeyFromDB()
+	if err != nil && !errors.Is(err, postgres.ErrNoKey) {
 		fmt.Printf("error getting open AI api key: %v\n", err)
 		os.Exit(1)
 	}

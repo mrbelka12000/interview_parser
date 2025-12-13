@@ -1,4 +1,4 @@
-package repo
+package postgres
 
 import (
 	"errors"
@@ -32,7 +32,7 @@ func (ap *ApiKeyRepo) InsertOpenAIAPIKey(openAIAPIKey string) error {
 	apiKey := &models.APIKey{
 		APIKey: openAIAPIKey,
 	}
-	
+
 	if err := GetDB().Create(apiKey).Error; err != nil {
 		return fmt.Errorf("failed to insert API key: %w", err)
 	}

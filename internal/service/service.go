@@ -1,17 +1,21 @@
 package service
 
-import "github.com/mrbelka12000/interview_parser/internal/repo"
+import (
+	"github.com/mrbelka12000/interview_parser/internal/repo/postgres"
+)
 
-type Service struct {
-	apiKeyRepo    *repo.ApiKeyRepo
-	interviewRepo *repo.InterviewRepo
-	callRepo      *repo.CallRepo
-}
+type (
+	Service struct {
+		apiKeyRepo    *postgres.ApiKeyRepo
+		interviewRepo *postgres.InterviewRepo
+		callRepo      *postgres.CallRepo
+	}
+)
 
 func New() *Service {
 	return &Service{
-		apiKeyRepo:    repo.NewApiKeyRepo(),
-		interviewRepo: repo.NewInterviewRepo(),
-		callRepo:      repo.NewCallRepo(),
+		apiKeyRepo:    postgres.NewApiKeyRepo(),
+		interviewRepo: postgres.NewInterviewRepo(),
+		callRepo:      postgres.NewCallRepo(),
 	}
 }

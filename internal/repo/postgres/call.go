@@ -1,4 +1,4 @@
-package repo
+package postgres
 
 import (
 	"errors"
@@ -45,7 +45,7 @@ func (r *CallRepo) Get(id uint64) (*models.Call, error) {
 // GetAll retrieves all calls with optional pagination
 func (r *CallRepo) GetAll(limit, offset int) ([]models.Call, error) {
 	query := GetDB().Order("created_at DESC")
-	
+
 	if limit > 0 {
 		query = query.Limit(limit)
 	}

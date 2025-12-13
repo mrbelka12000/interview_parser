@@ -1,36 +1,66 @@
 package config
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
-	"runtime"
 
 	"github.com/joho/godotenv"
+	"github.com/sethvargo/go-envconfig"
 )
 
-type Config struct {
-	ChunkSeconds              int
-	GPTTranscribeModel        string
-	GPTClassifyQuestionsModel string
-	GPTGenerateQuestionsModel string
-	DBPath                    string
-	DatabaseURL               string
-	LoadChunks                bool
-	ChunksDir                 string
-	ParallelWorkers           int
-	OpenAIAPIKey              string
-	Language                  string
-	DefaultDir                string
-	DefaultTranscriptDir      string
-	DefaultAnalyzeDir         string
-	DefaultAnalyzeCallDir     string
-	WSServerPort              int
+type (
+	Config struct {
+		ServiceConfig
+		WSConfig
+		GPTConfig
+		TranscribeConfig
+		LocalConfig
+		DBConfig
+		AudioConfig
+	}
 
-	AudioSampleRate uint32
-	AudioChannels   uint32
-	AudioBitrate    uint16
-}
+	ServiceConfig struct {
+		ServiceName     string `env:"SERVICE_NAME"`
+		ParallelWorkers int    `env:"PARALLEL_WORKERS, default=6"`
+	}
+
+	WSConfig struct {
+		WSServerPort int `env:"WS_SERVER_PORT, default=35044"`
+	}
+
+	GPTConfig struct {
+		GPTTranscribeModel        string `env:"GPT_TRANSCRIBE_MODEL,required"`
+		GPTClassifyQuestionsModel string `env:"GPT_CLASSIFY_QUESTIONS_MODEL,required"`
+		GPTGenerateQuestionsModel string `env:"GPT_GENERATE_QUESTIONS_MODEL,required"`
+		OpenAIAPIKey              string `env:"OPENAI_API_KEY,required"`
+	}
+
+	TranscribeConfig struct {
+		ChunkSeconds int `env:"CHUNK_SECONDS, default=100"`
+	}
+
+	LocalConfig struct {
+		DefaultDir            string
+		DefaultTranscriptDir  string
+		DefaultAnalyzeDir     string
+		DefaultAnalyzeCallDir string
+		ChunksDir             string
+	}
+
+	DBConfig struct {
+		Path  string `env:"DB_PATH"`
+		PGURL string `env:"PG_URL"`
+	}
+
+	AudioConfig struct {
+		AudioSampleRate uint32 `env:"AUDIO_SAMPLE_RATE, default=48000"`
+		AudioChannels   uint32 `env:"AUDIO_CHANNELS, default=2"`
+		AudioBitrate    uint16 `env:"AUDIO_BITRATE, default=16"`
+	}
+)
 
 const (
 	defaultDirName                   = ".interview_parser"
@@ -47,10 +77,29 @@ const (
 	defaultAudioChannels             = 2
 	defaultAudioBitrate              = 16
 	defaultWSServerPort              = 35044
+
+	productionEnv = "PRODUCTION"
+	localEnv      = "LOCAL"
 )
 
 func ParseConfig() *Config {
 	godotenv.Load()
+
+	env := os.Getenv("ENV")
+	if env == productionEnv {
+		log.Println("[I] Production environment variable detected")
+		cfg := &Config{}
+
+		err := envconfig.Process(context.Background(), &cfg)
+		if err != nil {
+			log.Printf("[I] Error parsing env vars: %v\n", err)
+			return nil
+		}
+
+		return cfg
+	}
+
+	log.Println("[I] Using local environment variable")
 
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -65,31 +114,36 @@ func ParseConfig() *Config {
 		}
 	}
 
-	// Initialize config with default values directly from constants
+	// Initialize config with default values using nested structs
 	cfg := &Config{
-		ChunkSeconds:              defaultChunksSeconds,
-		GPTTranscribeModel:        defaultGPTTranscribeModels,
-		GPTClassifyQuestionsModel: defaultGPTClassifyQuestionsModel,
-		GPTGenerateQuestionsModel: defaultGPTGenerateQuestionsModel,
-		LoadChunks:                defaultLoadChunks,
-		ParallelWorkers:           runtime.NumCPU(),
-		Language:                  "ru",
-		AudioSampleRate:           defaultAudioSampleRate,
-		AudioChannels:             defaultAudioChannels,
-		AudioBitrate:              defaultAudioBitrate,
-		WSServerPort:              defaultWSServerPort,
+		WSConfig: WSConfig{
+			WSServerPort: defaultWSServerPort,
+		},
+		GPTConfig: GPTConfig{
+			GPTTranscribeModel:        defaultGPTTranscribeModels,
+			GPTClassifyQuestionsModel: defaultGPTClassifyQuestionsModel,
+			GPTGenerateQuestionsModel: defaultGPTGenerateQuestionsModel,
+			OpenAIAPIKey:              os.Getenv("OPENAI_API_KEY"),
+		},
+		TranscribeConfig: TranscribeConfig{
+			ChunkSeconds: defaultChunksSeconds,
+		},
+		LocalConfig: LocalConfig{
+			DefaultDir:            defaultDir,
+			DefaultTranscriptDir:  filepath.Join(defaultDir, defaultTranscriptDir),
+			DefaultAnalyzeDir:     filepath.Join(defaultDir, defaultAnalyzeDir),
+			DefaultAnalyzeCallDir: filepath.Join(defaultDir, defaultAnalyzeCallDir),
+			ChunksDir:             filepath.Join(defaultDir, defaultChunksDir),
+		},
+		DBConfig: DBConfig{
+			Path: filepath.Join(defaultDir, "local.db"),
+		},
+		AudioConfig: AudioConfig{
+			AudioSampleRate: defaultAudioSampleRate,
+			AudioChannels:   defaultAudioChannels,
+			AudioBitrate:    defaultAudioBitrate,
+		},
 	}
-
-	// Set derived paths
-	cfg.DBPath = filepath.Join(defaultDir, "local.db")
-	cfg.ChunksDir = filepath.Join(defaultDir, defaultChunksDir)
-	cfg.DefaultDir = defaultDir
-	cfg.DefaultTranscriptDir = filepath.Join(defaultDir, defaultTranscriptDir)
-	cfg.DefaultAnalyzeDir = filepath.Join(defaultDir, defaultAnalyzeDir)
-	cfg.DefaultAnalyzeCallDir = filepath.Join(defaultDir, defaultAnalyzeCallDir)
-
-	// Set database URL from environment
-	cfg.DatabaseURL = os.Getenv("PG_URL")
 
 	if err := os.Mkdir(cfg.DefaultTranscriptDir, os.ModePerm); err != nil {
 		if !os.IsExist(err) {
@@ -107,7 +161,7 @@ func ParseConfig() *Config {
 		}
 	}
 
-	fmt.Printf("DBPath: %s\n", cfg.DBPath)
+	fmt.Printf("DBPath: %s\n", cfg.DBConfig.Path)
 
 	return cfg
 }

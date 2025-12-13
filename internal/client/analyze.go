@@ -76,8 +76,8 @@ func (c *Client) AnalyzeTranscript(ctx context.Context, text string) (out models
 
 	res, err := c.cl.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
 		Messages: []openai.ChatCompletionMessageParamUnion{
-			openai.SystemMessage(getAnalyzePrompt(c.cfg.Language)),
-			openai.UserMessage(fmt.Sprintf(getTranscriptPrompt(c.cfg.Language), text)),
+			openai.SystemMessage(promptAnalyze),
+			openai.UserMessage(fmt.Sprintf(transcriptHeader, text)),
 		},
 		Model: c.cfg.GPTClassifyQuestionsModel,
 	})

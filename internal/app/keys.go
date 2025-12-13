@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/mrbelka12000/interview_parser/internal/client"
-	"github.com/mrbelka12000/interview_parser/internal/repo"
+	"github.com/mrbelka12000/interview_parser/internal/repo/postgres"
 )
 
 // APIKeyResult represents the result of API key operations
@@ -21,7 +21,7 @@ type APIKeyResult struct {
 func (a *App) GetOpenAIAPIKey() (*APIKeyResult, error) {
 	apiKey, err := a.service.GetAPIKey()
 	if err != nil {
-		if errors.Is(err, repo.ErrNoKey) {
+		if errors.Is(err, postgres.ErrNoKey) {
 			return &APIKeyResult{
 				Success: false,
 				Message: "No API key found in database",
