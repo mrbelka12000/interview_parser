@@ -1,95 +1,56 @@
 package repo
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 
-	_ "github.com/mattn/go-sqlite3"
+	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 
 	"github.com/mrbelka12000/interview_parser/internal/config"
+	"github.com/mrbelka12000/interview_parser/internal/models"
 )
 
 var (
 	ErrNoKey = errors.New("no key found")
-	db       *sql.DB
+	db       *gorm.DB
 )
 
-func InitDB(cfg *config.Config) (err error) {
-	db, err = sql.Open("sqlite3", cfg.DBPath)
+func InitDB(cfg *config.Config) error {
+	var err error
+	
+	if cfg.DatabaseURL != "" {
+		// Use PostgreSQL
+		db, err = gorm.Open(postgres.Open(cfg.DatabaseURL), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Info),
+		})
+	} else {
+		// Fallback to SQLite
+		db, err = gorm.Open(sqlite.Open(cfg.DBPath), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Info),
+		})
+	}
+	
 	if err != nil {
-		return
+		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	if err = db.Ping(); err != nil {
-		return
-	}
-
-	ddl := `
-CREATE TABLE IF NOT EXISTS api_keys (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    api_key TEXT NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);`
-
-	_, err = db.Exec(ddl)
+	// Auto migrate the schema
+	err = db.AutoMigrate(
+		&models.APIKey{},
+		&models.AnalyzeInterview{},
+		&models.QuestionAnswer{},
+		&models.Call{},
+	)
 	if err != nil {
-		return fmt.Errorf("create api keys table: %w", err)
-	}
-
-	ddl = `
-	CREATE TABLE IF NOT EXISTS interviews (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-	);
-
-	CREATE INDEX IF NOT EXISTS interviews_created_at ON interviews(created_at);
-	`
-
-	_, err = db.Exec(ddl)
-	if err != nil {
-		return fmt.Errorf("create interviews table: %w", err)
-	}
-
-	ddl = `
-	CREATE TABLE IF NOT EXISTS question_answers (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		interview_id INTEGER NOT NULL,
-		question TEXT NOT NULL,
-		full_answer TEXT,
-		accuracy REAL NOT NULL,
-		reason_unanswered TEXT,
-		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (interview_id) REFERENCES interviews(id) ON DELETE CASCADE
-	);
-
-	CREATE INDEX IF NOT EXISTS idx_question_answers_interview_id ON question_answers(interview_id);
-	CREATE INDEX IF NOT EXISTS idx_question_answers_accuracy ON question_answers(accuracy);
-	`
-
-	_, err = db.Exec(ddl)
-	if err != nil {
-		return fmt.Errorf("create question answers table: %w", err)
-	}
-
-	ddl = `
-	CREATE TABLE IF NOT EXISTS calls (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		transcript TEXT NOT NULL,
-		analysis TEXT,
-		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-	);
-
-	CREATE INDEX IF NOT EXISTS idx_calls_created_at ON calls(created_at);
-	`
-
-	_, err = db.Exec(ddl)
-	if err != nil {
-		return fmt.Errorf("create calls table: %w", err)
+		return fmt.Errorf("failed to migrate database: %w", err)
 	}
 
 	return nil
+}
+
+func GetDB() *gorm.DB {
+	return db
 }

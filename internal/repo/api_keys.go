@@ -1,8 +1,12 @@
 package repo
 
 import (
-	"database/sql"
 	"errors"
+	"fmt"
+
+	"gorm.io/gorm"
+
+	"github.com/mrbelka12000/interview_parser/internal/models"
 )
 
 type ApiKeyRepo struct {
@@ -13,33 +17,32 @@ func NewApiKeyRepo() *ApiKeyRepo {
 }
 
 func (ap *ApiKeyRepo) GetOpenAIAPIKeyFromDB() (string, error) {
-	var apiKey string
-	err := db.QueryRow(`SELECT api_key
-FROM api_keys
-ORDER BY created_at DESC
-LIMIT 1;`).Scan(&apiKey)
-	if errors.Is(err, sql.ErrNoRows) {
-		return "", ErrNoKey
+	var apiKey models.APIKey
+	if err := GetDB().Order("created_at DESC").First(&apiKey).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", ErrNoKey
+		}
+		return "", fmt.Errorf("failed to get API key: %w", err)
 	}
 
-	return apiKey, nil
+	return apiKey.APIKey, nil
 }
 
 func (ap *ApiKeyRepo) InsertOpenAIAPIKey(openAIAPIKey string) error {
-	_, err := db.Exec(`
-INSERT INTO api_keys (api_key)
-VALUES (?);`, openAIAPIKey)
-	if err != nil {
-		return err
+	apiKey := &models.APIKey{
+		APIKey: openAIAPIKey,
+	}
+	
+	if err := GetDB().Create(apiKey).Error; err != nil {
+		return fmt.Errorf("failed to insert API key: %w", err)
 	}
 
 	return nil
 }
 
 func (ap *ApiKeyRepo) DeleteOpenAIAPIKey() error {
-	_, err := db.Exec(`DELETE FROM api_keys;`)
-	if err != nil {
-		return err
+	if err := GetDB().Where("1 = 1").Delete(&models.APIKey{}).Error; err != nil {
+		return fmt.Errorf("failed to delete API keys: %w", err)
 	}
 
 	return nil

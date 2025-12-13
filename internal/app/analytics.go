@@ -7,7 +7,7 @@ import (
 )
 
 // GetInterviewAnalyticsAPI retrieves analytics for a specific interview
-func (a *App) GetInterviewAnalyticsAPI(interviewID int64) (models.InterviewAnalytics, error) {
+func (a *App) GetInterviewAnalyticsAPI(interviewID uint64) (models.InterviewAnalytics, error) {
 	return a.service.GetInterviewAnalytics(interviewID)
 }
 

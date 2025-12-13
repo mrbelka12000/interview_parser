@@ -18,6 +18,14 @@ type TranscriptionResult struct {
 	AnalysisPath   string `json:"analysisPath,omitempty"`
 }
 
+func (a *App) SaveInterviewAPI(interview *models.AnalyzeInterviewWithQA) (int64, error) {
+	if err := a.service.SaveInterview(interview); err != nil {
+		return 0, err
+	}
+
+	return 0, nil
+}
+
 // GetAllInterviewsAPI retrieves all interviews with optional date filters
 func (a *App) GetAllInterviewsAPI(dateFrom, dateTo string) ([]models.AnalyzeInterviewWithQA, error) {
 	filters := &models.GetInterviewsFilters{}
@@ -38,23 +46,18 @@ func (a *App) GetAllInterviewsAPI(dateFrom, dateTo string) ([]models.AnalyzeInte
 }
 
 // GetInterviewAPI retrieves a specific interview by ID
-func (a *App) GetInterviewAPI(id int64) (*models.AnalyzeInterviewWithQA, error) {
+func (a *App) GetInterviewAPI(id uint64) (*models.AnalyzeInterviewWithQA, error) {
 	return a.service.GetInterview(id)
 }
 
-// SaveInterviewAPI creates a new interview with question answers
-func (a *App) SaveInterviewAPI(interview *models.AnalyzeInterviewWithQA) (int64, error) {
-	return a.service.SaveInterview(interview)
+// DeleteInterviewAPI deletes an interview and its question answers
+func (a *App) DeleteInterviewAPI(id uint64) error {
+	return a.service.DeleteInterview(id)
 }
 
 // UpdateInterviewAPI updates an existing interview and its question answers
 func (a *App) UpdateInterviewAPI(interview *models.AnalyzeInterview, qaList []models.QuestionAnswer) error {
 	return a.service.UpdateInterview(interview, qaList)
-}
-
-// DeleteInterviewAPI deletes an interview and its question answers
-func (a *App) DeleteInterviewAPI(id int64) error {
-	return a.service.DeleteInterview(id)
 }
 
 // SaveAndProcessRecording saves the recording and immediately processes it for transcription
@@ -79,8 +82,6 @@ func (a *App) SaveAndProcessRecording(filename string) (*TranscriptionResult, er
 // ProcessFileForTranscription handles file upload and processing using the parser logic
 func (a *App) ProcessFileForTranscription(filePath string) (*TranscriptionResult, error) {
 	fmt.Printf("Processing file %s\n", filePath)
-
-	defer os.Remove(filePath)
 
 	// Check if file exists
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {

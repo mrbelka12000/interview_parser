@@ -303,13 +303,13 @@ export namespace models {
 		}
 	}
 	export class Call {
-	    ID: number;
-	    Transcript: string;
-	    Analysis: number[];
+	    id: number;
+	    transcript: string;
+	    analysis: number[];
 	    // Go type: time
-	    CreatedAt: any;
+	    created_at: any;
 	    // Go type: time
-	    UpdatedAt: any;
+	    updated_at: any;
 	
 	    static createFrom(source: any = {}) {
 	        return new Call(source);
@@ -317,11 +317,11 @@ export namespace models {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.ID = source["ID"];
-	        this.Transcript = source["Transcript"];
-	        this.Analysis = source["Analysis"];
-	        this.CreatedAt = this.convertValues(source["CreatedAt"], null);
-	        this.UpdatedAt = this.convertValues(source["UpdatedAt"], null);
+	        this.id = source["id"];
+	        this.transcript = source["transcript"];
+	        this.analysis = source["analysis"];
+	        this.created_at = this.convertValues(source["created_at"], null);
+	        this.updated_at = this.convertValues(source["updated_at"], null);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

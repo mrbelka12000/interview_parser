@@ -57,8 +57,19 @@ func (a *App) GetCallsByDateRangeAPI(dateFrom, dateTo string) ([]models.Call, er
 }
 
 // GetCallAPI retrieves a specific call by ID
-func (a *App) GetCallAPI(id int64) (*models.Call, error) {
+func (a *App) GetCallAPI(id uint64) (*models.Call, error) {
 	return a.service.GetCall(id)
+}
+
+// UpdateCallAPI updates an existing call
+func (a *App) UpdateCallAPI(id uint64, transcript string, analysis interface{}) error {
+	_, err := a.service.UpdateCall(id, transcript, analysis)
+	return err
+}
+
+// UpdateCallAnalysisAPI updates only the analysis field of a call
+func (a *App) UpdateCallAnalysisAPI(id uint64, analysis interface{}) error {
+	return a.service.UpdateCallAnalysis(id, analysis)
 }
 
 // SaveCallAPI creates a new call with transcript and optional analysis
@@ -66,19 +77,8 @@ func (a *App) SaveCallAPI(call *models.Call) (*models.Call, error) {
 	return a.service.SaveCall(call)
 }
 
-// UpdateCallAPI updates an existing call
-func (a *App) UpdateCallAPI(id int64, transcript string, analysis interface{}) error {
-	_, err := a.service.UpdateCall(id, transcript, analysis)
-	return err
-}
-
-// UpdateCallAnalysisAPI updates only the analysis field of a call
-func (a *App) UpdateCallAnalysisAPI(id int64, analysis interface{}) error {
-	return a.service.UpdateCallAnalysis(id, analysis)
-}
-
 // DeleteCallAPI deletes a call by ID
-func (a *App) DeleteCallAPI(id int64) error {
+func (a *App) DeleteCallAPI(id uint64) error {
 	return a.service.DeleteCall(id)
 }
 

@@ -7,21 +7,21 @@ import (
 )
 
 // SaveInterview creates a new interview with its question answers
-func (s *Service) SaveInterview(interview *models.AnalyzeInterviewWithQA) (int64, error) {
+func (s *Service) SaveInterview(interview *models.AnalyzeInterviewWithQA) error {
 	if interview == nil {
-		return 0, fmt.Errorf("interview cannot be nil")
+		return fmt.Errorf("interview cannot be nil")
 	}
 	if len(interview.QA) == 0 {
-		return 0, fmt.Errorf("question answers list cannot be empty")
+		return fmt.Errorf("question answers list cannot be empty")
 	}
 
 	// Validate question answers
 	for i, qa := range interview.QA {
 		if qa.Question == "" {
-			return 0, fmt.Errorf("question at index %d cannot be empty", i)
+			return fmt.Errorf("question at index %d cannot be empty", i)
 		}
 		if qa.Accuracy < 0 || qa.Accuracy > 100 {
-			return 0, fmt.Errorf("accuracy at index %d must be between 0 and 100", i)
+			return fmt.Errorf("accuracy at index %d must be between 0 and 100", i)
 		}
 	}
 
@@ -33,7 +33,7 @@ func (s *Service) UpdateInterview(interview *models.AnalyzeInterview, qaList []m
 	if interview == nil {
 		return fmt.Errorf("interview cannot be nil")
 	}
-	if interview.ID <= 0 {
+	if interview.ID == 0 {
 		return fmt.Errorf("invalid interview ID: %d", interview.ID)
 	}
 	if len(qaList) == 0 {
@@ -54,8 +54,8 @@ func (s *Service) UpdateInterview(interview *models.AnalyzeInterview, qaList []m
 }
 
 // DeleteInterview deletes an interview and its question answers
-func (s *Service) DeleteInterview(id int64) error {
-	if id <= 0 {
+func (s *Service) DeleteInterview(id uint64) error {
+	if id == 0 {
 		return fmt.Errorf("invalid interview ID: %d", id)
 	}
 
@@ -63,7 +63,7 @@ func (s *Service) DeleteInterview(id int64) error {
 }
 
 // GetInterview combines interview and question answers into a single struct
-func (s *Service) GetInterview(id int64) (*models.AnalyzeInterviewWithQA, error) {
+func (s *Service) GetInterview(id uint64) (*models.AnalyzeInterviewWithQA, error) {
 	interview, qaList, err := s.interviewRepo.Get(id)
 	if err != nil {
 		return nil, err

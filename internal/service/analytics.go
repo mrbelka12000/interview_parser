@@ -127,7 +127,7 @@ func (s *Service) GetGlobalAnalytics(filters *models.GetInterviewsFilters) (*mod
 	return global, nil
 }
 
-func (s *Service) GetInterviewAnalytics(id int64) (models.InterviewAnalytics, error) {
+func (s *Service) GetInterviewAnalytics(id uint64) (models.InterviewAnalytics, error) {
 	interview, err := s.GetInterview(id)
 	if err != nil {
 		return models.InterviewAnalytics{}, err

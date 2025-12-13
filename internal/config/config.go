@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -13,6 +15,7 @@ type Config struct {
 	GPTClassifyQuestionsModel string
 	GPTGenerateQuestionsModel string
 	DBPath                    string
+	DatabaseURL               string
 	LoadChunks                bool
 	ChunksDir                 string
 	ParallelWorkers           int
@@ -21,7 +24,6 @@ type Config struct {
 	DefaultDir                string
 	DefaultTranscriptDir      string
 	DefaultAnalyzeDir         string
-	DefaultOutputName         string
 	DefaultAnalyzeCallDir     string
 	WSServerPort              int
 
@@ -36,8 +38,7 @@ const (
 	defaultAnalyzeDir                = "analyzes"
 	defaultAnalyzeCallDir            = "calls"
 	defaultChunksDir                 = "output/chunks"
-	defaultChunksSeconds             = 100
-	defaultOutputName                = "analytics.md"
+	defaultChunksSeconds             = 200
 	defaultGPTClassifyQuestionsModel = "o3"
 	defaultGPTGenerateQuestionsModel = "gpt-4.1"
 	defaultGPTTranscribeModels       = "gpt-4o-transcribe"
@@ -49,6 +50,8 @@ const (
 )
 
 func ParseConfig() *Config {
+	godotenv.Load()
+
 	home, err := os.UserHomeDir()
 	if err != nil {
 		fmt.Printf("Error getting home directory: %s\n", err)
@@ -71,7 +74,6 @@ func ParseConfig() *Config {
 		LoadChunks:                defaultLoadChunks,
 		ParallelWorkers:           runtime.NumCPU(),
 		Language:                  "ru",
-		DefaultOutputName:         defaultOutputName,
 		AudioSampleRate:           defaultAudioSampleRate,
 		AudioChannels:             defaultAudioChannels,
 		AudioBitrate:              defaultAudioBitrate,
@@ -85,6 +87,9 @@ func ParseConfig() *Config {
 	cfg.DefaultTranscriptDir = filepath.Join(defaultDir, defaultTranscriptDir)
 	cfg.DefaultAnalyzeDir = filepath.Join(defaultDir, defaultAnalyzeDir)
 	cfg.DefaultAnalyzeCallDir = filepath.Join(defaultDir, defaultAnalyzeCallDir)
+
+	// Set database URL from environment
+	cfg.DatabaseURL = os.Getenv("PG_URL")
 
 	if err := os.Mkdir(cfg.DefaultTranscriptDir, os.ModePerm); err != nil {
 		if !os.IsExist(err) {

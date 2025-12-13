@@ -29,8 +29,8 @@ func (s *Service) SaveCall(obj *models.Call) (*models.Call, error) {
 }
 
 // GetCall retrieves a call by ID
-func (s *Service) GetCall(id int64) (*models.Call, error) {
-	if id <= 0 {
+func (s *Service) GetCall(id uint64) (*models.Call, error) {
+	if id == 0 {
 		return nil, fmt.Errorf("invalid call ID: %d", id)
 	}
 
@@ -60,8 +60,8 @@ func (s *Service) GetAllCalls(limit, offset int) ([]models.Call, error) {
 }
 
 // UpdateCall updates an existing call
-func (s *Service) UpdateCall(id int64, transcript string, analysis interface{}) (*models.Call, error) {
-	if id <= 0 {
+func (s *Service) UpdateCall(id uint64, transcript string, analysis interface{}) (*models.Call, error) {
+	if id == 0 {
 		return nil, fmt.Errorf("invalid call ID: %d", id)
 	}
 	if transcript == "" {
@@ -97,8 +97,8 @@ func (s *Service) UpdateCall(id int64, transcript string, analysis interface{}) 
 }
 
 // DeleteCall deletes a call by ID
-func (s *Service) DeleteCall(id int64) error {
-	if id <= 0 {
+func (s *Service) DeleteCall(id uint64) error {
+	if id == 0 {
 		return fmt.Errorf("invalid call ID: %d", id)
 	}
 
@@ -125,8 +125,8 @@ func (s *Service) GetCallsByDateRange(dateFrom, dateTo time.Time) ([]models.Call
 }
 
 // UpdateCallAnalysis updates only the analysis field of a call
-func (s *Service) UpdateCallAnalysis(id int64, analysis interface{}) error {
-	if id <= 0 {
+func (s *Service) UpdateCallAnalysis(id uint64, analysis interface{}) error {
+	if id == 0 {
 		return fmt.Errorf("invalid call ID: %d", id)
 	}
 

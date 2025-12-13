@@ -56,7 +56,7 @@ func (a *App) analyzeInterview(transcript string) error {
 
 	// Step 6: Save analysis response
 	a.sendProgress(97, "Saving analysis...", "Writing analysis file...")
-	if _, err := a.service.SaveInterview(&analyzeResp); err != nil {
+	if err := a.service.SaveInterview(&analyzeResp); err != nil {
 		return fmt.Errorf("failed to save analysis: %w", err)
 	}
 
