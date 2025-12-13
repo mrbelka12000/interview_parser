@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/joho/godotenv"
 	"github.com/sethvargo/go-envconfig"
@@ -35,7 +36,6 @@ type (
 		GPTTranscribeModel        string `env:"GPT_TRANSCRIBE_MODEL,required"`
 		GPTClassifyQuestionsModel string `env:"GPT_CLASSIFY_QUESTIONS_MODEL,required"`
 		GPTGenerateQuestionsModel string `env:"GPT_GENERATE_QUESTIONS_MODEL,required"`
-		OpenAIAPIKey              string `env:"OPENAI_API_KEY,required"`
 	}
 
 	TranscribeConfig struct {
@@ -77,6 +77,7 @@ const (
 	defaultAudioChannels             = 2
 	defaultAudioBitrate              = 16
 	defaultWSServerPort              = 35044
+	defaultServiceName               = "interview_parser"
 
 	productionEnv = "PRODUCTION"
 	localEnv      = "LOCAL"
@@ -116,6 +117,10 @@ func ParseConfig() *Config {
 
 	// Initialize config with default values using nested structs
 	cfg := &Config{
+		ServiceConfig: ServiceConfig{
+			ServiceName:     defaultServiceName,
+			ParallelWorkers: runtime.NumCPU(),
+		},
 		WSConfig: WSConfig{
 			WSServerPort: defaultWSServerPort,
 		},
@@ -123,7 +128,6 @@ func ParseConfig() *Config {
 			GPTTranscribeModel:        defaultGPTTranscribeModels,
 			GPTClassifyQuestionsModel: defaultGPTClassifyQuestionsModel,
 			GPTGenerateQuestionsModel: defaultGPTGenerateQuestionsModel,
-			OpenAIAPIKey:              os.Getenv("OPENAI_API_KEY"),
 		},
 		TranscribeConfig: TranscribeConfig{
 			ChunkSeconds: defaultChunksSeconds,

@@ -13,6 +13,7 @@ import (
 	"github.com/mrbelka12000/interview_parser/internal/config"
 	"github.com/mrbelka12000/interview_parser/internal/delivery/ws"
 	"github.com/mrbelka12000/interview_parser/internal/parser"
+	"github.com/mrbelka12000/interview_parser/internal/repo"
 	"github.com/mrbelka12000/interview_parser/internal/service"
 )
 
@@ -45,9 +46,9 @@ func NewApp(cfg *config.Config) *App {
 	return &App{
 		cfg:           cfg,
 		parser:        parser.NewParser(cfg),
-		aiClient:      client.New(cfg),
+		aiClient:      client.New(cfg, ""),
 		audioRecorder: audioRecorder,
-		service:       service.New(),
+		service:       service.New(repo.NewRepositories(cfg)),
 	}
 }
 
@@ -57,7 +58,12 @@ func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 
 	sync.OnceFunc(func() {
-		if err := ws.RunServer(a.cfg); err != nil {
+		apiKey, err := a.service.GetAPIKey()
+		if err == nil {
+			a.aiClient = client.New(a.cfg, apiKey)
+		}
+
+		if err := ws.RunServer(a.cfg, a.aiClient); err != nil {
 			log.Println(fmt.Sprintf("Error starting WS server: %v", err))
 		}
 	})()

@@ -2,7 +2,6 @@ package main
 
 import (
 	"embed"
-	"errors"
 	"fmt"
 	"os"
 
@@ -12,7 +11,6 @@ import (
 
 	"github.com/mrbelka12000/interview_parser/internal/app"
 	"github.com/mrbelka12000/interview_parser/internal/config"
-	"github.com/mrbelka12000/interview_parser/internal/repo/postgres"
 )
 
 //go:embed all:frontend/dist
@@ -25,21 +23,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	switch {
-
-	}
-
-	apiKey, err := postgres.NewApiKeyRepo().GetOpenAIAPIKeyFromDB()
-	if err != nil && !errors.Is(err, postgres.ErrNoKey) {
-		fmt.Printf("error getting open AI api key: %v\n", err)
-		os.Exit(1)
-	}
-	cfg.OpenAIAPIKey = apiKey
-
 	app := app.NewApp(cfg)
 
 	// Create application with options
-	err = wails.Run(&options.App{
+	err := wails.Run(&options.App{
 		Title: "interview_parser_app",
 		AssetServer: &assetserver.Options{
 			Assets: assets,

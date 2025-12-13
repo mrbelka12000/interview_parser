@@ -16,10 +16,10 @@ func NewInterviewRepo() *InterviewRepo {
 }
 
 // Save creates a new interview and its question answers
-func (r *InterviewRepo) Save(interview *models.AnalyzeInterviewWithQA) (int64, error) {
+func (r *InterviewRepo) Save(interview *models.AnalyzeInterviewWithQA) error {
 	tx, err := db.Begin()
 	if err != nil {
-		return 0, fmt.Errorf("failed to begin transaction: %w", err)
+		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -31,12 +31,12 @@ func (r *InterviewRepo) Save(interview *models.AnalyzeInterviewWithQA) (int64, e
 	`
 	result, err := tx.Exec(query, now, now)
 	if err != nil {
-		return 0, fmt.Errorf("failed to insert interview: %w", err)
+		return fmt.Errorf("failed to insert interview: %w", err)
 	}
 
 	interviewID, err := result.LastInsertId()
 	if err != nil {
-		return 0, fmt.Errorf("failed to get interview ID: %w", err)
+		return fmt.Errorf("failed to get interview ID: %w", err)
 	}
 
 	// Insert question answers
@@ -52,23 +52,19 @@ func (r *InterviewRepo) Save(interview *models.AnalyzeInterviewWithQA) (int64, e
 		`
 		_, err = tx.Exec(qaQuery, qa.InterviewID, qa.Question, qa.FullAnswer, qa.Accuracy, qa.ReasonUnanswered, qa.CreatedAt, qa.UpdatedAt)
 		if err != nil {
-			return 0, fmt.Errorf("failed to insert question answer: %w", err)
+			return fmt.Errorf("failed to insert question answer: %w", err)
 		}
 	}
 
 	if err = tx.Commit(); err != nil {
-		return 0, fmt.Errorf("failed to commit transaction: %w", err)
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	interview.ID = uint64(interviewID)
-	interview.CreatedAt = now
-	interview.UpdatedAt = now
-
-	return interviewID, nil
+	return nil
 }
 
 // Get retrieves an interview with its question answers by ID
-func (r *InterviewRepo) Get(id int64) (*models.AnalyzeInterview, []models.QuestionAnswer, error) {
+func (r *InterviewRepo) Get(id uint64) (*models.AnalyzeInterview, []models.QuestionAnswer, error) {
 	// Get interview
 	query := `
 	SELECT id, created_at, updated_at 
@@ -230,7 +226,7 @@ func (r *InterviewRepo) Update(interview *models.AnalyzeInterview, qaList []mode
 }
 
 // Delete deletes an interview and its question answers
-func (r *InterviewRepo) Delete(id int64) error {
+func (r *InterviewRepo) Delete(id uint64) error {
 	query := `DELETE FROM interviews WHERE id = ?`
 	result, err := db.Exec(query, id)
 	if err != nil {

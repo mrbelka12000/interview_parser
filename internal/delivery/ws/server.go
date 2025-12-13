@@ -463,9 +463,8 @@ func (s *InterviewSession) sendError(message string) {
 	s.sendMessage(errorMsg)
 }
 
-func RunServer(cfg *config.Config) error {
+func RunServer(cfg *config.Config, aiClient *client.Client) error {
 	// Initialize AI client for the global session
-	aiClient := client.New(cfg)
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		sessionMutex.Lock()

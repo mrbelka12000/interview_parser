@@ -17,7 +17,7 @@ func NewCallRepo() *CallRepo {
 }
 
 // Create creates a new call record
-func (r *CallRepo) Create(call *models.Call) (int64, error) {
+func (r *CallRepo) Create(call *models.Call) (uint64, error) {
 	now := time.Now()
 	query := `
 	INSERT INTO calls (transcript, analysis, created_at, updated_at) 
@@ -44,15 +44,15 @@ func (r *CallRepo) Create(call *models.Call) (int64, error) {
 		return 0, fmt.Errorf("failed to get call ID: %w", err)
 	}
 
-	call.ID = callID
+	call.ID = uint64(callID)
 	call.CreatedAt = now
 	call.UpdatedAt = now
 
-	return callID, nil
+	return call.ID, nil
 }
 
 // Get retrieves a call by ID
-func (r *CallRepo) Get(id int64) (*models.Call, error) {
+func (r *CallRepo) Get(id uint64) (*models.Call, error) {
 	query := `
 	SELECT id, transcript, analysis, created_at, updated_at 
 	FROM calls 
@@ -157,7 +157,7 @@ func (r *CallRepo) Update(call *models.Call) error {
 }
 
 // Delete deletes a call by ID
-func (r *CallRepo) Delete(id int64) error {
+func (r *CallRepo) Delete(id uint64) error {
 	query := `DELETE FROM calls WHERE id = ?`
 	result, err := db.Exec(query, id)
 	if err != nil {

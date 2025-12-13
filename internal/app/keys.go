@@ -57,10 +57,8 @@ func (a *App) SaveOpenAIAPIKey(apiKey string) (*APIKeyResult, error) {
 
 	fmt.Printf("Saving API key: %s\n", apiKey)
 	// Save to config for current session
-	tmpCfg := *a.cfg
-	tmpCfg.OpenAIAPIKey = apiKey
 
-	aiClient := client.New(&tmpCfg)
+	aiClient := client.New(a.cfg, apiKey)
 	err := aiClient.IsValidAPIKeysProvided()
 	if err != nil {
 		return &APIKeyResult{
@@ -69,16 +67,13 @@ func (a *App) SaveOpenAIAPIKey(apiKey string) (*APIKeyResult, error) {
 	}
 
 	// Save to database
-	err = a.service.InsertAPIKey(tmpCfg.OpenAIAPIKey)
+	err = a.service.InsertAPIKey(apiKey)
 	if err != nil {
 		return &APIKeyResult{
 			Success: false,
 			Message: fmt.Sprintf("Failed to save API key: %s", err),
 		}, nil
 	}
-
-	a.cfg = &tmpCfg
-	a.aiClient = aiClient
 
 	return &APIKeyResult{
 		Success:     true,
@@ -97,9 +92,6 @@ func (a *App) DeleteOpenAIAPIKey() (*APIKeyResult, error) {
 			Message: fmt.Sprintf("Failed to delete API key: %s", err),
 		}, nil
 	}
-
-	// Clear from current config
-	a.cfg.OpenAIAPIKey = ""
 
 	return &APIKeyResult{
 		Success: true,

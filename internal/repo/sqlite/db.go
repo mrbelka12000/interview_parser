@@ -6,8 +6,6 @@ import (
 	"fmt"
 
 	_ "github.com/mattn/go-sqlite3"
-
-	"github.com/mrbelka12000/interview_parser/internal/config"
 )
 
 var (
@@ -15,8 +13,8 @@ var (
 	db       *sql.DB
 )
 
-func InitDB(cfg *config.Config) (err error) {
-	db, err = sql.Open("sqlite3", cfg.DBPath)
+func InitDB(dbPath string) (err error) {
+	db, err = sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return
 	}

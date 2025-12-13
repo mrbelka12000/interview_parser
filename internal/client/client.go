@@ -12,10 +12,10 @@ type Client struct {
 	cfg config.Config
 }
 
-func New(cfg *config.Config) *Client {
+func New(cfg *config.Config, apiKey string) *Client {
 	return &Client{
 		cl: openai.NewClient(
-			option.WithAPIKey(cfg.OpenAIAPIKey),
+			option.WithAPIKey(apiKey),
 		),
 		cfg: *cfg,
 	}
