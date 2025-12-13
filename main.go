@@ -56,9 +56,3 @@ func main() {
 		println("Error:", err.Error())
 	}
 }
-
-/*
-TODO:
-dashboard with metrics
-Integrate audio parser
-*/

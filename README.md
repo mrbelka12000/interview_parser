@@ -8,21 +8,46 @@ Interview Parser Desktop App provides a user-friendly graphical interface for pr
 
 ## Features
 
+### 🏠 Welcome Home Experience
+When you first launch Interview Parser, you're greeted by a beautiful and intuitive home dashboard that serves as your personal command center. Think of it as your mission control for interview preparation - every feature you need is just one click away, with clear explanations that make you feel like you have a personal guide walking you through everything.
+
+The home page isn't just a boring list of features; it's your personal interview coach that understands what you're trying to achieve. Each section is carefully crafted with human-like descriptions that speak to you, not at you. You'll find yourself nodding along thinking, "Yes, that's exactly what I need!"
+
 ### Core Functionality
-- **Audio/Video Transcription**: Uses OpenAI's advanced models to transcribe interview recordings
-- **Question Analysis**: Intelligently extracts and categorizes questions from interviewers
-- **Answer Classification**: Determines which questions were adequately answered by candidates
-- **Parallel Processing**: Efficiently processes large files using configurable parallel workers
-- **Chunk-based Processing**: Splits large recordings into manageable chunks for optimal processing
-- **Detailed Analytics**: Generates comprehensive reports with question-answer pairs and accuracy scores
+- **Audio/Video Transcription**: Uses OpenAI's advanced models to transcribe interview recordings with crystal-clear accuracy that makes you feel like you have a personal transcriptionist working just for you
+- **Question Analysis**: Intelligently extracts and categorizes questions from interviewers, helping you understand exactly what was asked and how it relates to your performance
+- **Answer Classification**: Determines which questions were adequately answered by candidates, giving you honest feedback that feels like it's coming from a seasoned HR professional
+- **Parallel Processing**: Efficiently processes large files using configurable parallel workers, so you're never left waiting around wondering if your computer crashed
+- **Chunk-based Processing**: Splits large recordings into manageable chunks for optimal processing, like having a team of experts each working on their specialty
+- **Detailed Analytics**: Generates comprehensive reports with question-answer pairs and accuracy scores that read like a personalized performance review
 
 ### Desktop Application Features
-- **Intuitive GUI**: Modern Vue.js interface with tabbed navigation
-- **File Explorer**: Built-in file browser for easy file management
-- **Progress Tracking**: Real-time progress updates during processing
-- **API Key Management**: Secure storage and management of OpenAI API keys
-- **File Upload**: Drag-and-drop or file picker for media files
-- **Content Viewer**: Built-in viewer for transcripts and analysis results
+- **Intuitive GUI**: Modern Vue.js interface with tabbed navigation that feels as natural as flipping through your favorite app
+- **File Explorer**: Built-in file browser for easy file management that works just like your computer's file explorer, but smarter
+- **Progress Tracking**: Real-time progress updates during processing that keep you informed and engaged, never leaving you wondering "Is it still working?"
+- **API Key Management**: Secure storage and management of OpenAI API keys with the simplicity of a password manager
+- **File Upload**: Drag-and-drop or file picker for media files that feels as natural as dropping files on your desktop
+- **Content Viewer**: Built-in viewer for transcripts and analysis results that's as comfortable to read as your favorite text editor
+
+### 🎯 Enhanced Navigation Experience
+The application now features a thoughtfully designed navigation system where each tab has its own personality and purpose:
+
+- **🏠 Home**: Your personal dashboard that introduces you to all features like a friendly tour guide
+- **📤 Upload & Transcribe**: Transform your recordings into text with the ease of sending an email
+- **🎙️ Record Audio**: Capture crystal-clear audio directly from your microphone with professional-grade quality
+- **🎯 Mock Interview**: Practice with an AI interviewer that adapts to your CV and dream job like a personal career coach
+- **📋 Interviews**: Organize and review all your interview data in one place, like having a personal filing cabinet
+- **📞 Calls & Meetings**: Turn your business meetings into actionable insights that make you look like a superstar at work
+- **📊 Analytics Dashboard**: Track your progress over time with beautiful charts and insights that celebrate your improvements
+- **📂 File Explorer**: Browse and manage all your files with the familiarity of your computer's file system
+- **🔑 API Key Management**: Keep your credentials secure and organized with the simplicity of a digital wallet
+
+### 💡 User Experience Enhancements
+- **Human-Centered Design**: Every button, every interaction, every feature is designed with real human beings in mind - no confusing technical jargon, just clear, friendly language
+- **Responsive Layout**: Whether you're on a laptop, tablet, or desktop, the app adapts to you, not the other way around
+- **Visual Workflow Guide**: Step-by-step visual walkthrough that shows you exactly how to achieve your goals, like having a patient mentor
+- **Pro Tips Section**: Contextual tips and best practices that feel like advice from an experienced friend who's been there before
+- **Feature Discovery**: Interactive cards that invite exploration and make you excited to try new capabilities
 
 ## Architecture
 
