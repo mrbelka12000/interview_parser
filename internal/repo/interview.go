@@ -26,7 +26,7 @@ func (r *InterviewRepo) Save(interview *models.AnalyzeInterviewWithQA) (int64, e
 	// Insert interview
 	now := time.Now()
 	query := `
-	INSERT INTO analyze_interviews (created_at, updated_at) 
+	INSERT INTO interviews (created_at, updated_at) 
 	VALUES (?, ?)
 	`
 	result, err := tx.Exec(query, now, now)
@@ -72,7 +72,7 @@ func (r *InterviewRepo) Get(id int64) (*models.AnalyzeInterview, []models.Questi
 	// Get interview
 	query := `
 	SELECT id, created_at, updated_at 
-	FROM analyze_interviews 
+	FROM interviews 
 	WHERE id = ?
 	`
 	var interview models.AnalyzeInterview
@@ -119,7 +119,7 @@ func (r *InterviewRepo) GetAll(filters *models.GetInterviewsFilters) ([]models.A
 	// Build query with filters
 	query := `
 	SELECT id, created_at, updated_at 
-	FROM analyze_interviews 
+	FROM interviews 
 	WHERE 1=1
 	`
 
@@ -188,7 +188,7 @@ func (r *InterviewRepo) Update(interview *models.AnalyzeInterview, qaList []mode
 
 	// Update interview
 	query := `
-	UPDATE analyze_interviews 
+	UPDATE interviews 
 	SET updated_at = ? 
 	WHERE id = ?
 	`
@@ -231,7 +231,7 @@ func (r *InterviewRepo) Update(interview *models.AnalyzeInterview, qaList []mode
 
 // Delete deletes an interview and its question answers
 func (r *InterviewRepo) Delete(id int64) error {
-	query := `DELETE FROM analyze_interviews WHERE id = ?`
+	query := `DELETE FROM interviews WHERE id = ?`
 	result, err := db.Exec(query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete interview: %w", err)

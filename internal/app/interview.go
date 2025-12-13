@@ -5,6 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
+
+	"github.com/mrbelka12000/interview_parser/internal/models"
 )
 
 // TranscriptionResult represents the result of transcription and analysis
@@ -13,6 +16,45 @@ type TranscriptionResult struct {
 	Message        string `json:"message"`
 	TranscriptPath string `json:"transcriptPath,omitempty"`
 	AnalysisPath   string `json:"analysisPath,omitempty"`
+}
+
+// GetAllInterviewsAPI retrieves all interviews with optional date filters
+func (a *App) GetAllInterviewsAPI(dateFrom, dateTo string) ([]models.AnalyzeInterviewWithQA, error) {
+	filters := &models.GetInterviewsFilters{}
+
+	if dateFrom != "" {
+		if parsed, err := time.Parse("2006-01-02", dateFrom); err == nil {
+			filters.DateFrom = &parsed
+		}
+	}
+
+	if dateTo != "" {
+		if parsed, err := time.Parse("2006-01-02", dateTo); err == nil {
+			filters.DateTo = &parsed
+		}
+	}
+
+	return a.service.GetAllInterviews(filters)
+}
+
+// GetInterviewAPI retrieves a specific interview by ID
+func (a *App) GetInterviewAPI(id int64) (*models.AnalyzeInterviewWithQA, error) {
+	return a.service.GetInterview(id)
+}
+
+// SaveInterviewAPI creates a new interview with question answers
+func (a *App) SaveInterviewAPI(interview *models.AnalyzeInterviewWithQA) (int64, error) {
+	return a.service.SaveInterview(interview)
+}
+
+// UpdateInterviewAPI updates an existing interview and its question answers
+func (a *App) UpdateInterviewAPI(interview *models.AnalyzeInterview, qaList []models.QuestionAnswer) error {
+	return a.service.UpdateInterview(interview, qaList)
+}
+
+// DeleteInterviewAPI deletes an interview and its question answers
+func (a *App) DeleteInterviewAPI(id int64) error {
+	return a.service.DeleteInterview(id)
 }
 
 // SaveAndProcessRecording saves the recording and immediately processes it for transcription

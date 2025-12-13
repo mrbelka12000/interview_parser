@@ -9,17 +9,23 @@ import (
 )
 
 // SaveCall creates a new call with transcript and optional analysis
-func (s *Service) SaveCall(obj *models.Call) error {
+func (s *Service) SaveCall(obj *models.Call) (*models.Call, error) {
 	if obj.Transcript == "" {
-		return fmt.Errorf("transcript cannot be empty")
+		return nil, fmt.Errorf("transcript cannot be empty")
 	}
 
-	_, err := s.callRepo.Create(obj)
+	callID, err := s.callRepo.Create(obj)
 	if err != nil {
-		return fmt.Errorf("failed to create call: %w", err)
+		return nil, fmt.Errorf("failed to create call: %w", err)
 	}
 
-	return nil
+	// Get the created call to return with proper ID and timestamps
+	createdCall, err := s.callRepo.Get(callID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve created call: %w", err)
+	}
+
+	return createdCall, nil
 }
 
 // GetCall retrieves a call by ID

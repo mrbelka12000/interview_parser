@@ -69,7 +69,6 @@
           class="interview-analytics-card"
         >
           <div class="interview-header">
-            <h4>{{ getFileName(analytics.interviewPath) }}</h4>
             <button @click="showDetails(analytics)" class="btn-secondary">Details</button>
           </div>
           
@@ -204,22 +203,27 @@ export default {
       this.loading = true
       try {
         // Get global analytics
-        this.globalAnalytics = await GetGlobalAnalyticsAPI(
+        let globalResult = await GetGlobalAnalyticsAPI(
           this.filters.dateFrom,
           this.filters.dateTo,
           this.filters.minAccuracy,
           this.filters.maxAccuracy
         )
+        this.globalAnalytics = globalResult || null
 
         // Get all interview analytics
-        this.interviewAnalytics = await GetAllInterviewAnalyticsAPI(
+        let interviewResult = await GetAllInterviewAnalyticsAPI(
           this.filters.dateFrom,
           this.filters.dateTo,
           this.filters.minAccuracy,
           this.filters.maxAccuracy
         )
+        // Ensure result is an array, fallback to empty array if null/undefined
+        this.interviewAnalytics = Array.isArray(interviewResult) ? interviewResult : []
       } catch (error) {
         console.error('Error fetching analytics:', error)
+        this.globalAnalytics = null
+        this.interviewAnalytics = []
         this.$emit('error', 'Failed to load analytics data')
       } finally {
         this.loading = false
@@ -232,6 +236,7 @@ export default {
       this.selectedAnalytics = null
     },
     getFileName(path) {
+      if (!path) return 'Unknown File'
       return path.split('/').pop() || path
     },
     formatDate(dateString) {

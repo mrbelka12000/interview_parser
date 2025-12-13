@@ -3,9 +3,21 @@
 import {app} from '../models';
 import {models} from '../models';
 
+export function DeleteCallAPI(arg1:number):Promise<void>;
+
+export function DeleteInterviewAPI(arg1:number):Promise<void>;
+
 export function DeleteOpenAIAPIKey():Promise<app.APIKeyResult>;
 
+export function GetAllCallsAPI(arg1:number,arg2:number):Promise<Array<models.Call>>;
+
 export function GetAllInterviewAnalyticsAPI(arg1:string,arg2:string):Promise<Array<models.InterviewAnalytics>>;
+
+export function GetAllInterviewsAPI(arg1:string,arg2:string):Promise<Array<models.AnalyzeInterviewWithQA>>;
+
+export function GetCallAPI(arg1:number):Promise<models.Call>;
+
+export function GetCallsByDateRangeAPI(arg1:string,arg2:string):Promise<Array<models.Call>>;
 
 export function GetFiles():Promise<Array<app.FileInfo>>;
 
@@ -14,6 +26,8 @@ export function GetFilesInDirectory(arg1:string):Promise<Array<app.FileInfo>>;
 export function GetGlobalAnalyticsAPI(arg1:string,arg2:string):Promise<models.GlobalAnalytics>;
 
 export function GetInputDevices():Promise<app.DeviceResult>;
+
+export function GetInterviewAPI(arg1:number):Promise<models.AnalyzeInterviewWithQA>;
 
 export function GetInterviewAnalyticsAPI(arg1:number):Promise<models.InterviewAnalytics>;
 
@@ -39,6 +53,10 @@ export function SaveAndProcessRecording(arg1:string):Promise<app.TranscriptionRe
 
 export function SaveAndProcessRecordingForCall(arg1:string):Promise<app.CallAnalysisResult>;
 
+export function SaveCallAPI(arg1:models.Call):Promise<models.Call>;
+
+export function SaveInterviewAPI(arg1:models.AnalyzeInterviewWithQA):Promise<number>;
+
 export function SaveOpenAIAPIKey(arg1:string):Promise<app.APIKeyResult>;
 
 export function SaveRecording(arg1:string):Promise<app.RecordingResult>;
@@ -48,3 +66,9 @@ export function SetAudioInputDevice(arg1:string):Promise<app.DeviceResult>;
 export function StartAudioRecording():Promise<app.RecordingResult>;
 
 export function StopAudioRecording():Promise<app.RecordingResult>;
+
+export function UpdateCallAPI(arg1:number,arg2:string,arg3:any):Promise<void>;
+
+export function UpdateCallAnalysisAPI(arg1:number,arg2:any):Promise<void>;
+
+export function UpdateInterviewAPI(arg1:models.AnalyzeInterview,arg2:Array<models.QuestionAnswer>):Promise<void>;

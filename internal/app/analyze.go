@@ -72,8 +72,9 @@ func (a *App) analyzeCall(transcript string) error {
 
 	// Step 5: Save analysis response
 	a.sendProgress(90, "Saving analysis...", "Writing analysis file...")
-	if err = a.service.SaveCall(analyzeCallResp); err != nil {
+	if _, err = a.service.SaveCall(analyzeCallResp); err != nil {
 		return fmt.Errorf("failed to save call: %w", err)
 	}
+
 	return nil
 }

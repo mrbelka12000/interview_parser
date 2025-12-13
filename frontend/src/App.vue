@@ -7,6 +7,8 @@ import ApiKeyManager from './components/ApiKeyManager.vue'
 import AudioRecorder from './components/AudioRecorder.vue'
 import Analytics from './components/Analytics.vue'
 import MockInterview from './components/MockInterview.vue'
+import Interviews from './components/Interviews.vue'
+import Calls from './components/Calls.vue'
 import { ref } from 'vue'
 
 const currentView = ref('explorer')
@@ -37,40 +39,19 @@ const backToFileExplorer = () => {
     <header class="app-header">
       <img id="logo" alt="Wails logo" src="./assets/images/logo-universal.png"/>
       <nav class="nav-tabs">
-        <button 
-          @click="switchView('explorer')" 
-          :class="{ active: currentView === 'explorer' }"
-          class="nav-tab"
-        >
-          📂 File Explorer
-        </button>
-        <button 
+        <button
           @click="switchView('upload')" 
           :class="{ active: currentView === 'upload' }"
           class="nav-tab"
         >
           📤 Upload & Transcribe
         </button>
-        <button 
+        <button
           @click="switchView('record')" 
           :class="{ active: currentView === 'record' }"
           class="nav-tab"
         >
           🎙️ Record Audio
-        </button>
-        <button 
-          @click="switchView('apikey')" 
-          :class="{ active: currentView === 'apikey' }"
-          class="nav-tab"
-        >
-          🔑 API Key
-        </button>
-        <button 
-          @click="switchView('analytics')"
-          :class="{ active: currentView === 'analytics' }"
-          class="nav-tab"
-        >
-          📊 Analytics
         </button>
         <button
           @click="switchView('interview')"
@@ -80,11 +61,39 @@ const backToFileExplorer = () => {
           🎯 Mock Interview
         </button>
         <button
-          @click="switchView('greet')"
-          :class="{ active: currentView === 'greet' }"
+          @click="switchView('interviews')"
+          :class="{ active: currentView === 'interviews' }"
           class="nav-tab"
         >
-          👋 Greet
+          📋 Interviews
+        </button>
+        <button
+          @click="switchView('calls')"
+          :class="{ active: currentView === 'calls' }"
+          class="nav-tab"
+        >
+          📞 Calls
+        </button>
+        <button
+            @click="switchView('explorer')"
+            :class="{ active: currentView === 'explorer' }"
+            class="nav-tab"
+        >
+          📂 File Explorer
+        </button>
+        <button
+            @click="switchView('analytics')"
+            :class="{ active: currentView === 'analytics' }"
+            class="nav-tab"
+        >
+          📊 Analytics
+        </button>
+        <button
+            @click="switchView('apikey')"
+            :class="{ active: currentView === 'apikey' }"
+            class="nav-tab"
+        >
+          🔑 API Key
         </button>
       </nav>
     </header>
@@ -120,6 +129,8 @@ const backToFileExplorer = () => {
       />
       <Analytics v-else-if="currentView === 'analytics'" />
       <MockInterview v-else-if="currentView === 'interview'" />
+      <Interviews v-else-if="currentView === 'interviews'" />
+      <Calls v-else-if="currentView === 'calls'" />
       <HelloWorld v-else-if="currentView === 'greet'" />
     </main>
   </div>
@@ -243,13 +254,13 @@ body {
     width: 60px;
     height: 60px;
   }
-  
+
   .nav-tabs {
     flex-direction: column;
     align-items: center;
     gap: 8px;
   }
-  
+
   .nav-tab {
     width: 200px;
     text-align: center;

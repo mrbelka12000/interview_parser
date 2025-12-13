@@ -141,7 +141,7 @@ func (s *Service) GetAllInterviewAnalytics(filters *models.GetInterviewsFilters)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all interviews: %w", err)
 	}
-	result := make([]models.InterviewAnalytics, len(interviews))
+	result := make([]models.InterviewAnalytics, 0, len(interviews))
 
 	for _, interview := range interviews {
 		result = append(result, s.calculateAnalytics(interview))
