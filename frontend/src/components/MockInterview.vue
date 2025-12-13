@@ -270,7 +270,7 @@
 
 <script setup>
 import { ref, computed, onUnmounted, nextTick } from 'vue'
-import { GetWebSocketURL } from '../../wailsjs/go/app/App'
+import { GetWebSocketURL } from '../../wailsjs/go/wails_app/App'
 
 const interviewSetup = ref({
   cv: '',

@@ -1,6 +1,6 @@
 <script setup>
 import {onMounted, ref} from 'vue'
-import {GetFiles, GetFilesInDirectory} from '../../wailsjs/go/app/App'
+import {GetFiles, GetFilesInDirectory} from '../../wailsjs/go/wails_app/App'
 
 const emit = defineEmits(['file-selected', 'directory-opened'])
 

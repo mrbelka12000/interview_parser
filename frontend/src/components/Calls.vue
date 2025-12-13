@@ -133,7 +133,7 @@
 </template>
 
 <script>
-import { GetAllCallsAPI, GetCallsByDateRangeAPI, GetCallAPI, SaveCallAPI, UpdateCallAPI, DeleteCallAPI } from '../../wailsjs/go/app/App'
+import { GetAllCallsAPI, GetCallsByDateRangeAPI, GetCallAPI, SaveCallAPI, UpdateCallAPI, DeleteCallAPI } from '../../wailsjs/go/wails_app/App'
 
 export default {
   name: 'Calls',

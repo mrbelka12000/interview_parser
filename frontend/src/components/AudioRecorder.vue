@@ -233,7 +233,7 @@ import {
   GetRecordingStatus,
   GetInputDevices,
   SetAudioInputDevice,
-} from '../../wailsjs/go/app/App'
+} from '../../wailsjs/go/wails_app/App'
 import { EventsOn } from '../../wailsjs/runtime/runtime'
 import FileContent from './FileContent.vue'
 

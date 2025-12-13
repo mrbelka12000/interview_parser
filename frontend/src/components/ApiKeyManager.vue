@@ -112,7 +112,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { GetOpenAIAPIKey, SaveOpenAIAPIKey, DeleteOpenAIAPIKey } from '../../wailsjs/go/app/App'
+import { GetOpenAIAPIKey, SaveOpenAIAPIKey, DeleteOpenAIAPIKey } from '../../wailsjs/go/wails_app/App'
 
 const loading = ref(true)
 const currentKey = ref('')

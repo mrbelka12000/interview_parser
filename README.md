@@ -108,7 +108,7 @@ The application now features a thoughtfully designed navigation system where eac
 
 3. **Install Wails**:
    ```bash
-   go install github.com/wailsapp/wails/v2/cmd/wails@latest
+   go install github.com/wailsapp/wails_app/v2/cmd/wails_app@latest
    ```
 
 4. **Install FFmpeg**:
@@ -145,22 +145,22 @@ The application now features a thoughtfully designed navigation system where eac
 3. **Build the application**:
    ```bash
    # Development build
-   wails dev
+   wails_app dev
    
    # Production build
-   wails build
+   wails_app build
    ```
 
 ### Running the Application
 
 1. **Development mode** (with hot reload):
    ```bash
-   wails dev
+   wails_app dev
    ```
 
 2. **Production mode**:
    ```bash
-    wails build -platform darwin/arm64
+    wails_app build -platform darwin/arm64
 
     APP="build/bin/interview_parser.app"
     cp /usr/local/bin/ffprobe "$APP/Contents/MacOS/ffprobe"
@@ -380,13 +380,13 @@ interview_parser/
 
 2. **Backend Development**:
    ```bash
-   wails dev      # Start full application with hot reload
+   wails_app dev      # Start full application with hot reload
    ```
 
 3. **Building for Production**:
    ```bash
-   wails build    # Build for current platform
-   wails build -platform darwin/amd64 -webview2 embed  # Cross-platform
+   wails_app build    # Build for current platform
+   wails_app build -platform darwin/amd64 -webview2 embed  # Cross-platform
    ```
 
 ### Adding New Features

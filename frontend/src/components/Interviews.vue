@@ -170,7 +170,7 @@
 </template>
 
 <script>
-import { GetAllInterviewsAPI, GetInterviewAPI, SaveInterviewAPI, UpdateInterviewAPI, DeleteInterviewAPI } from '../../wailsjs/go/app/App'
+import { GetAllInterviewsAPI, GetInterviewAPI, SaveInterviewAPI, UpdateInterviewAPI, DeleteInterviewAPI } from '../../wailsjs/go/wails_app/App'
 
 export default {
   name: 'Interviews',

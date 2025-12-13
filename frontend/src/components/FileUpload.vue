@@ -113,7 +113,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { ProcessFileForTranscription, PickFile } from '../../wailsjs/go/app/App'
+import { ProcessFileForTranscription, PickFile } from '../../wailsjs/go/wails_app/App'
 import { EventsOn } from '../../wailsjs/runtime/runtime'
 import FileContent from './FileContent.vue'
 

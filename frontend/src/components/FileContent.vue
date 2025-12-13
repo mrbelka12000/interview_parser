@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { ReadFileContent } from '../../wailsjs/go/app/App'
+import { ReadFileContent } from '../../wailsjs/go/wails_app/App'
 
 const props = defineProps({
   filePath: {

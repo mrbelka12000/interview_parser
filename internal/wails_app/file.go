@@ -1,4 +1,4 @@
-package app
+package wails_app
 
 import (
 	"fmt"
@@ -45,7 +45,7 @@ func (a *App) GetFiles() ([]FileInfo, error) {
 
 		files = append(files, fileInfo)
 	}
-	
+
 	sortFiles(files)
 	return files, nil
 }

@@ -24,6 +24,7 @@ type (
 	}
 
 	ServiceConfig struct {
+		ENV             string `env:"ENV" envDefault:"local"`
 		ServiceName     string `env:"SERVICE_NAME"`
 		ParallelWorkers int    `env:"PARALLEL_WORKERS, default=6"`
 	}
@@ -33,9 +34,9 @@ type (
 	}
 
 	GPTConfig struct {
-		GPTTranscribeModel        string `env:"GPT_TRANSCRIBE_MODEL,required"`
-		GPTClassifyQuestionsModel string `env:"GPT_CLASSIFY_QUESTIONS_MODEL,required"`
-		GPTGenerateQuestionsModel string `env:"GPT_GENERATE_QUESTIONS_MODEL,required"`
+		GPTTranscribeModel        string `env:"GPT_TRANSCRIBE_MODEL, default=gpt-4o-transcribe"`
+		GPTClassifyQuestionsModel string `env:"GPT_CLASSIFY_QUESTIONS_MODEL, default=o3"`
+		GPTGenerateQuestionsModel string `env:"GPT_GENERATE_QUESTIONS_MODEL, default=gpt-4.1"`
 	}
 
 	TranscribeConfig struct {
@@ -72,24 +73,23 @@ const (
 	defaultGPTClassifyQuestionsModel = "o3"
 	defaultGPTGenerateQuestionsModel = "gpt-4.1"
 	defaultGPTTranscribeModels       = "gpt-4o-transcribe"
-	defaultLoadChunks                = false
 	defaultAudioSampleRate           = 48000
 	defaultAudioChannels             = 2
 	defaultAudioBitrate              = 16
 	defaultWSServerPort              = 35044
 	defaultServiceName               = "interview_parser"
 
-	productionEnv = "PRODUCTION"
-	localEnv      = "LOCAL"
+	ENVProduction = "PRODUCTION"
+	ENVLocal      = "LOCAL"
 )
 
 func ParseConfig() *Config {
 	godotenv.Load()
 
 	env := os.Getenv("ENV")
-	if env == productionEnv {
+	if env == ENVProduction {
 		log.Println("[I] Production environment variable detected")
-		cfg := &Config{}
+		cfg := Config{}
 
 		err := envconfig.Process(context.Background(), &cfg)
 		if err != nil {
@@ -97,7 +97,7 @@ func ParseConfig() *Config {
 			return nil
 		}
 
-		return cfg
+		return &cfg
 	}
 
 	log.Println("[I] Using local environment variable")
@@ -118,6 +118,7 @@ func ParseConfig() *Config {
 	// Initialize config with default values using nested structs
 	cfg := &Config{
 		ServiceConfig: ServiceConfig{
+			ENV:             ENVLocal,
 			ServiceName:     defaultServiceName,
 			ParallelWorkers: runtime.NumCPU(),
 		},

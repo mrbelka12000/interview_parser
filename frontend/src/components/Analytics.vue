@@ -177,7 +177,7 @@
 </template>
 
 <script>
-import { GetGlobalAnalyticsAPI, GetAllInterviewAnalyticsAPI } from '../../wailsjs/go/app/App'
+import { GetGlobalAnalyticsAPI, GetAllInterviewAnalyticsAPI } from '../../wailsjs/go/wails_app/App'
 
 export default {
   name: 'Analytics',

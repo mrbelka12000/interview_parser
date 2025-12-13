@@ -1,6 +1,6 @@
 <script setup>
 import {reactive} from 'vue'
-import {Greet} from '../../wailsjs/go/app/App'
+import {Greet} from '../../wailsjs/go/wails_app/App'
 
 const data = reactive({
   name: "",
